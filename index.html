@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="it">
+    <head>
+        <title>Generatore SQL</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="style/main.css">
+        <link rel="icon" href="img/favicon.png">
+        <script src="script/modal.js" defer></script>
+        <script src="script/table.js" defer></script>
+        <script src="script/main.js" defer></script>
+        <script src="script/types.js" defer></script>
+        <script src="script/sql.js" defer></script>
+    </head>
+    <body>
+        <template id="table-entry-template">
+            <div class="table-entry">
+                <img src="img/table.svg" alt="table">
+                <span></span>
+            </div>
+        </template>
+        <template id="table-row-template">
+            <tr>
+                <!-- <img class="foreignkey hidden" src="img/foreign.svg"> -->
+                <td><img class="primarykey hidden" src="img/key.svg"></td>
+                <td><input type="text" class="entry-name-input hidden"><span class="entry-name"></span></td>
+                <td>
+                    <img src="img/edit.svg" class="entry-edit-type filter-accent hidden"><span class="entry-type"></span>
+                </td>
+                <td><span class="entry-size"></span></td>
+                <td><input type="checkbox" class="hidden nullable-constraint"><img class="constraint nullable-constraint hidden" src="img/check.svg"></td>
+                <td><input type="checkbox" class="hidden ai-constraint" disabled><img class="constraint ai-constraint hidden" src="img/check.svg"></td>
+                <td><input type="checkbox" class="hidden unique-constraint"><img class="constraint unique-constraint hidden" src="img/check.svg"></td>
+            </tr>
+        </template>
+
+        <div class="modal hidden" id="modal-createtable">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Crea tabella
+                </div>
+                <div class="modal-body">
+                    <input type="text">
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Crea</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-export">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Esporta tabella
+                </div>
+                <div class="modal-body">
+                    <label>Seleziona target</label>
+                    <div>
+                        <select id="target-select">
+                            <option value="mysql">MySQL</option>
+                            <option value="access">Microsoft Access</option>
+                        </select>
+                        <img src="img/mysql.svg" id="database-logo" alt="database logo">
+                    </div>
+                    <textarea readonly></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Esporta</button>
+                    <button class="cancel">Chiudi</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-delete-table">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Elimina tabella
+                </div>
+                <div class="modal-body">
+                    Sei sicuro di voler eliminare questa tabella?
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Elimina</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-rowtype">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Selezione tipo
+                </div>
+                <div class="modal-body">
+                    <div id="type-list">
+                        <span class="type-category">Numeri interi</span>
+                        <span id="type-bit">Bit</span>
+                        <span id="type-integer">Intero</span>
+                        <span class="type-category">Numeri decimali</span>
+                        <span id="type-decimal">Virgola fissa</span>
+                        <span id="type-float">Virgola mobile</span>
+                        <span class="type-category">Data e ora</span>
+                        <span id="type-date">Data</span>
+                        <span id="type-time">Ora</span>
+                        <span id="type-datetime">Data e Ora</span>
+                        <span class="type-category">Testo</span>
+                        <span id="type-char">Carattere</span>
+                        <span id="type-varchar">Testo variabile</span>
+                        <span id="type-text">Testo fisso</span>
+                    </div>
+                    <div id="type-settings">
+                        <div id="integer-settings" class="hidden">
+                            <label>Grandezza</label>
+                            <input type="range" min="0" max="3" step="1" id="int-range" list="int-sizes">
+
+                            <datalist id="int-sizes">
+                                <option value="0"></option>
+                                <option value="1"></option>
+                                <option value="2"></option>
+                                <option value="3"></option>
+                            </datalist>
+                            <div class="range-labels" style="--max-value: 3">
+                                <span style="--value: 0">&nbsp;8</span>
+                                <span style="--value: 1">16</span>
+                                <span style="--value: 2">32</span>
+                                <span style="--value: 3">64</span>
+                            </div>
+                        </div>
+                        <div id="decimal-settings" class="hidden">
+                            <label>Grandezza totale</label>
+                            <div class="fine-range">
+                                <div>
+                                    <input type="range" min="1" max="38" step="1" id="decimal-precision">
+                                </div>
+                                <input type="number" min="1" max="38" step="1" id="nud-decimal-precision">
+                            </div>
+                            <label>Lunghezza parte decimale</label>
+                            <div class="fine-range">
+                                <div>
+                                    <input type="range" min="0" max="38" step="1" id="decimal-scale">
+                                </div>
+                                <input type="number" min="0" max="38" step="1" id="nud-decimal-scale">
+                            </div>
+                        </div>
+                        <div id="float-settings" class="hidden">
+                            <label>Grandezza</label>
+                            <div class="fine-range">
+                                <div>
+                                    <input type="range" min="1" max="53" step="1" list="float-sizes" id="float-range">
+                                    <datalist id="float-sizes">
+                                        <option value="1"></option>
+                                        <option value="24"></option>
+                                        <option value="32"></option>
+                                        <option value="53"></option>
+                                    </datalist>
+                                    <div class="range-labels" style="--max-value: 52">
+                                        <span style="--value: 0">&nbsp;1</span>
+                                        <span style="--value: 23">24</span>
+                                        <span style="--value: 31">32</span>
+                                        <span style="--value: 52">53</span>
+                                    </div>
+                                </div>
+                                <input type="number" min="1" max="53" step="1" id="nud-float-range">
+                            </div>
+                        </div>
+                        <div id="varchar-settings" class="hidden">
+                            <label>Grandezza</label>
+                            <div class="fine-range">
+                                <div>
+                                    <input type="range" min="1" max="8000" step="1" id="varchar-range">
+                                </div>
+                                <input type="number" min="1" max="8000" step="1" id="nud-varchar-range">
+                            </div>
+                        </div>
+                        <div id="text-settings" class="hidden">
+                            <label>Grandezza</label>
+                            <input type="range" min="0" max="3" step="1" id="text-range" list="text-sizes">
+
+                            <datalist id="text-sizes">
+                                <option value="0"></option>
+                                <option value="1"></option>
+                                <option value="2"></option>
+                                <option value="3"></option>
+                            </datalist>
+                            <div class="range-labels" style="--max-value: 3">
+                                <span style="--value: 0">&nbsp;8</span>
+                                <span style="--value: 1">16</span>
+                                <span style="--value: 2">24</span>
+                                <span style="--value: 3">32</span>
+                            </div>
+                        </div>
+                        <div id="empty-settings"></div>
+                        <span id="type-info">
+                            <span id="type-description"></span><br><br>
+                            <span class="hidden"><b>Valore min: </b><span id="type-min"></span><br></span>
+                            <span class="hidden"><b>Valore max: </b><span id="type-max"></span><br></span>
+                            <span class="hidden"><b>Grandezza: </b><span id="type-size"></span></span>
+                        </span>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm" id="rowtype-confirm">Seleziona</button>
+                    <button class="cancel" id="rowtype-cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+        <nav>
+            <button id="btn-createtable">
+                <img src="img/plus.svg" alt="add table button">
+                Nuova tabella
+            </button>
+            <span class="nav-separator">Tabelle</span>
+            <div id="table-container"></div>
+            <button id="export-button">
+                <img src="img/export.svg" alt="export tables button">
+                Esporta SQL
+            </button>
+        </nav>
+
+        <main class="hidden">
+            <div id="actions">
+                <button id="edit-structure">
+                    <img src="img/edit.svg" class="filter-white" alt="edit structure button">
+                    Modifica struttura
+                </button>
+                <button id="export-structure">
+                    <img src="img/export.svg" alt="export table button">
+                    Esporta tabella
+                </button>
+                <button id="delete-structure">
+                    <img src="img/cancel.svg" class="filter-red" alt="delete table button">
+                    Elimina tabella
+                </button>
+
+                <button id="save-structure" class="hidden">
+                    <img src="img/save.svg" alt="save changes button">
+                    Salva modifiche
+                </button>
+                <button id="discard-structure" class="hidden">
+                    <img src="img/cancel.svg" class="filter-white" alt="discard changes button">
+                    Annulla
+                </button>
+            </div>
+            <table id="table-structure">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>Grandezza</th>
+                        <th>Nullabile</th>
+                        <th>Auto incrementale</th>
+                        <th>Unico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="hidden" id="add-row">
+                        <td><img src="img/plus.svg" alt="add row button" id="add-row"></td>
+                        <td colspan="6">
+                            Aggiungi
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </main>
+    </body>
+</html>
