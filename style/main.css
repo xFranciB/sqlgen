@@ -7,6 +7,7 @@
     --mainbar-hover: #7B8D9E;
     --red: #FA272F;
     --red-hover: #FA4D53;
+    --nav-width: 250px;
 }
 
 img.filter-white {
@@ -96,7 +97,7 @@ input[type="range"] {
 nav {
     background-color: var(--accent);
     box-shadow: 0 0 6px 0 black;
-    min-width: 250px;
+    min-width: var(--nav-width);
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -238,12 +239,19 @@ nav > button {
 
 main {
     width: 100%;
+    overflow: scroll;
+    padding: 50px 20px;
+    position: relative;
 }
 
 #actions {
     padding: 0;
     background-color: var(--mainbar);
     display: flex;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: var(--nav-width);
 }
 
 #actions > button {
@@ -258,7 +266,6 @@ main {
     text-align: left;
     border-collapse: collapse;
     font-size: 1.1em;
-    margin: 20px;
 }
 
 #table-structure th:first-child,
@@ -428,4 +435,23 @@ main {
     width: 500px;
     height: 200px;
     resize: none;
+}
+
+#er-diagram {
+    border: 1px solid black;
+}
+
+#er-controls {
+    width: 100%;
+    background-color: var(--mainbar);
+    display: flex;
+}
+
+#er-controls > button {
+    padding: 5px;
+    padding-right: 10px;
+}
+
+#er-controls > button:hover {
+    background-color: var(--mainbar-hover);
 }

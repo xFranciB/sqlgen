@@ -11,6 +11,7 @@
         <script src="script/main.js" defer></script>
         <script src="script/types.js" defer></script>
         <script src="script/sql.js" defer></script>
+        <script src="script/er.js" defer></script>
     </head>
     <body>
         <template id="table-entry-template">
@@ -79,6 +80,27 @@
                 </div>
                 <div class="modal-body">
                     Sei sicuro di voler eliminare questa tabella?
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Elimina</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="modal-er">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Diagramma ER
+                </div>
+                <div class="modal-body">
+                    <div id="er-controls">
+                        <button><img src="img/plus.svg">Entità</button>
+                        <button><img src="img/plus.svg">Relazione</button>
+                    </div>
+                    <canvas id="er-diagram" width="800" height="450">
+
+                    </canvas>
                 </div>
                 <div class="modal-buttons">
                     <button class="confirm">Elimina</button>
@@ -242,6 +264,7 @@
                     Annulla
                 </button>
             </div>
+            <h2>Struttura</h2>
             <table id="table-structure">
                 <thead>
                     <tr>
