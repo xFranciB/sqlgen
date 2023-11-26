@@ -19,6 +19,8 @@ const herons = (x1, y1, x2, y2, x3, y3) => {
     return Math.sqrt(sp * (sp - line1) * (sp - line2) * (sp - line3))
 }
 
+const clamp = (val, min, max) => Math.min(max, Math.max(min, val))
+
 class ERDiagram {
     static directions = {up: 0, right: 1, down: 2, left: 3}
     #isDragging = false
@@ -39,10 +41,15 @@ class ERDiagram {
         relation: {
             w: 150,
             h: 75,
+            gapBase: 10,
+            radius: 5,
+
             slope: 0,
             rads: 0,
             cosine: 0,
             sine: 0,
+            gapH: 0,
+            gapV: 0
         },
         attribute: {
             length: 20,
@@ -63,8 +70,12 @@ class ERDiagram {
             rads: rads,
             cosine: Math.cos(rads),
             sine: Math.sin(rads),
-            area: Math.round((ERDiagram.#shapeSizes.relation.w * ERDiagram.#shapeSizes.relation.h) / 2)
+            area: Math.round((ERDiagram.#shapeSizes.relation.w * ERDiagram.#shapeSizes.relation.h) / 2),
+            gapH: ((slope < 1)? (1/slope) : 1) * this.#shapeSizes.relation.gapBase,
+            gapV: ((slope > 1)?    slope  : 1) * this.#shapeSizes.relation.gapBase
         })
+
+        console.log(this.#shapeSizes.relation)
     }
 
     constructor(canvas) {
@@ -121,6 +132,47 @@ class ERDiagram {
             p4: {
                 x: pos.x,
                 y: pos.y + (h / 2)
+            }
+        }
+
+        const radius = ERDiagram.#shapeSizes.relation.radius
+        const gapV = ERDiagram.#shapeSizes.relation.gapV
+        const gapH = ERDiagram.#shapeSizes.relation.gapH
+
+        const boundscache = this.#boundscache[relationid]
+
+        this.#boundscache[relationid].dots = {
+            top: {
+                x: boundscache.p1.x,
+                y: boundscache.p1.y + gapV,
+                bounds: {
+                    x: boundscache.p1.x - radius,
+                    y: boundscache.p1.y + gapV - radius,
+                }
+            },
+            right: {
+                x: boundscache.p2.x - gapH,
+                y: boundscache.p2.y,
+                bounds: {
+                    x: boundscache.p2.x - gapH - radius,
+                    y: boundscache.p2.y - radius
+                }
+            },
+            bottom: {
+                x: boundscache.p3.x,
+                y: boundscache.p3.y - gapV,
+                bounds: {
+                    x: boundscache.p3.x - radius,
+                    y: boundscache.p3.y - gapV - radius
+                }
+            },
+            left: {
+                x: boundscache.p4.x + gapH,
+                y: boundscache.p4.y,
+                bounds: {
+                    x: boundscache.p4.x + gapH - radius,
+                    y: boundscache.p4.y - radius
+                }
             }
         }
     }
@@ -192,10 +244,10 @@ class ERDiagram {
             }
 
             this.#boundscache[entityid].bounds = {
-                x: this.#boundscache[entityid].x - length - (radius * 2),
-                y: this.#boundscache[entityid].y - radius,
-                w: length + (radius * 2),
-                h: radius * 2,
+                x: this.#boundscache[entityid].x - radius,
+                y: this.#boundscache[entityid].y,
+                w: radius * 2,
+                h: length + (radius * 2),
             }
 
             break
@@ -207,10 +259,10 @@ class ERDiagram {
             }
 
             this.#boundscache[entityid].bounds = {
-                x: this.#boundscache[entityid].x - radius,
-                y: this.#boundscache[entityid].y,
-                w: radius * 2,
-                h: length + (radius * 2),
+                x: this.#boundscache[entityid].x - length - (radius * 2),
+                y: this.#boundscache[entityid].y - radius,
+                w: length + (radius * 2),
+                h: radius * 2,
             }
 
             break
@@ -460,11 +512,25 @@ class ERDiagram {
         this.#ctx.stroke()
         this.#ctx.closePath()
 
+        // Dots
+        const radius = ERDiagram.#shapeSizes.relation.radius
+        this.#ctx.beginPath()
+
+        for (let dot of Object.values(boundscache.dots)) {
+            this.#ctx.moveTo(dot.x + radius, dot.y)
+            this.#ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2)
+        }
+
+        this.#ctx.fill()
+        this.#ctx.stroke()
+
         this.#drawText(
             relation.pos.x + (ERDiagram.#shapeSizes.relation.w / 2),
             relation.pos.y + (ERDiagram.#shapeSizes.relation.h / 2),
             relation.text, 'center', 'middle'
         )
+
+        this.#ctx.closePath()
     }
 
     #drawEntityAttribute(attrid) {
@@ -534,6 +600,7 @@ class ERDiagram {
 
         switch (boundscache.direction) {
         case 0:
+            console.log('a?')
             this.#drawText(boundscache.centerx, boundscache.centery - textGap, attr.text, 'middle', 'bottom')
             break
 
@@ -608,7 +675,7 @@ class ERDiagram {
             }
         }
 
-        if (link.text !== '') drawRelText(boundscache.minline.end, boundscache.relationHalves[boundscache.minline.end], link.text)
+        drawRelText(boundscache.minline.end, boundscache.relationHalves[boundscache.minline.end], link.text)
 
         this.#ctx.lineTo(boundscache.relationHalves[boundscache.minline.end].x, boundscache.relationHalves[boundscache.minline.end].y)
         this.#ctx.stroke()
@@ -628,6 +695,7 @@ class ERDiagram {
             break
 
         case 'entity-attr':
+            this.#moveEntityAttribute(this.#draggingEntity, x, y)
             break
 
         case 'relation-attr':
@@ -663,11 +731,53 @@ class ERDiagram {
         }
     }
 
+    #moveEntityAttribute(attrid, x, y) {
+        const attrib = this.#items[attrid]
+        const entity = this.#items[attrib.pos.relatedto]
+
+        const l = entity.pos.x
+        const r = entity.pos.x + ERDiagram.#shapeSizes.rect.w
+        const t = entity.pos.y
+        const b = entity.pos.y + ERDiagram.#shapeSizes.rect.h
+
+        x = clamp(x, l, r)
+        y = clamp(y, t, b)
+
+        const dl = Math.abs(x - l)
+        const dr = Math.abs(x - r)
+        const dt = Math.abs(y - t)
+        const db = Math.abs(y - b)
+        const min = Math.min(dl, dr, dt, db)
+
+        // Most of the stuff we save in this object is useless (for now?),
+        // it could be used to avoid rebuilding the entire cache everytime.
+        let minpoint = {}
+
+        switch (min) {
+        case dt:
+            minpoint = {x: x, y: t, direction: 0, offset: x - l}
+            break
+
+        case dr:
+            minpoint = {x: r, y: y, direction: 1, offset: ERDiagram.#shapeSizes.rect.w + (y - t)}
+            break
+
+        case db:
+            minpoint = {x: x, y: b, direction: 2, offset: ERDiagram.#shapeSizes.rect.w + ERDiagram.#shapeSizes.rect.h + (r - x)}
+            break
+
+        case dl:
+            minpoint = {x: l, y: y, direction: 3, offset: (ERDiagram.#shapeSizes.rect.w * 2) + ERDiagram.#shapeSizes.rect.h + (b - y)}
+            break
+        }
+
+        attrib.pos.offset = minpoint.offset
+        delete this.#boundscache[attrid]
+    }
+
     redraw() {
-        console.time('redraw')
         this.#ctx.clearRect(0, 0, this.#canvasSizes.w, this.#canvasSizes.h)
 
-        // Redraw entities
         for (let entityid in this.#items) {
             switch(this.#items[entityid].type) {
             case 'entity':
@@ -691,8 +801,6 @@ class ERDiagram {
                 break
             }
         }
-
-        console.timeEnd('redraw')
     }
 
     #elementAtPos(x, y) {
@@ -735,6 +843,7 @@ class ERDiagram {
             }
 
             case 'entity-attr': {
+                console.log(x, y, boundscache)
                 if (
                     x >= boundscache.bounds.x && x <= boundscache.bounds.x + boundscache.bounds.w &&
                     y >= boundscache.bounds.y && y <= boundscache.bounds.y + boundscache.bounds.h
