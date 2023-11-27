@@ -22,7 +22,7 @@ const herons = (x1, y1, x2, y2, x3, y3) => {
 const clamp = (val, min, max) => Math.min(max, Math.max(min, val))
 
 class ERDiagram {
-    static directions = {up: 0, right: 1, down: 2, left: 3}
+    static directions = {top: 0, right: 1, bottom: 2, left: 3}
     #isDragging = false
     #draggingEntity = null
     #offsetcoords = {x: null, y: null}
@@ -74,8 +74,6 @@ class ERDiagram {
             gapH: ((slope < 1)? (1/slope) : 1) * this.#shapeSizes.relation.gapBase,
             gapV: ((slope > 1)?    slope  : 1) * this.#shapeSizes.relation.gapBase
         })
-
-        console.log(this.#shapeSizes.relation)
     }
 
     constructor(canvas) {
@@ -117,6 +115,7 @@ class ERDiagram {
         const h = ERDiagram.#shapeSizes.relation.h
 
         this.#boundscache[relationid] = {
+            dragging: null,
             p1: {
                 x: pos.x + (w / 2),
                 y: pos.y
@@ -486,6 +485,63 @@ class ERDiagram {
         this.#ctx.fillText(text, x, y)
     }
 
+    #drawLine(x1, y1, x2, y2, startdir, enddir, starttext = '', endtext = '') {
+        const drawLineText = (position, x, y, text) => {
+            switch (position) {
+            case 0:
+                this.#drawText(x, y - ERDiagram.#shapeSizes.link.textGap, text, 'center', 'bottom')
+                break
+
+            case 1:
+                this.#drawText(x, y, text, 'left', 'bottom')
+                break
+
+            case 2:
+                this.#drawText(x, y + ERDiagram.#shapeSizes.link.textGap, text, 'center', 'top')
+                break
+
+            case 3:
+                this.#drawText(x, y, text, 'right', 'bottom')
+                break
+            }
+        }
+
+        this.#ctx.beginPath()
+        this.#ctx.moveTo(x1, y1)
+
+        if ((startdir + enddir) % 2 == 0) {
+            if (startdir % 2 == 0) {
+                // bottom --> top; top --> bottom
+                const avgy = (y1 + y2) / 2
+                this.#ctx.lineTo(x1, avgy)
+                this.#ctx.lineTo(x2, avgy)
+
+            } else {
+                // left --> right; right --> left
+                const avgx = (x1 + x2) / 2
+                this.#ctx.lineTo(avgx, y1)
+                this.#ctx.lineTo(avgx, y2)
+            }
+
+        } else {
+            if (startdir % 2 == 0) {
+                // top or bottom --> left or right
+                this.#ctx.lineTo(x1, y2)
+            } else {
+                // left or right --> top or bottom
+                this.#ctx.lineTo(x2, y1)
+            }
+        }
+
+        this.#ctx.lineTo(x2, y2)
+
+        drawLineText(startdir, x1, y1, starttext)
+        drawLineText(enddir, x2, y2, endtext)
+
+        this.#ctx.stroke()
+        this.#ctx.closePath()
+    }
+
     #drawEntity(entityid) {
         this.#cacheEntityBounds(entityid)
         const boundscache = this.#boundscache[entityid]
@@ -512,17 +568,32 @@ class ERDiagram {
         this.#ctx.stroke()
         this.#ctx.closePath()
 
+        if (boundscache.dragging !== null) {
+            console.log()
+
+            this.#drawLine(
+                boundscache.dots[boundscache.dragging].x,
+                boundscache.dots[boundscache.dragging].y,
+                boundscache.dragto.x,
+                boundscache.dragto.y,
+                ERDiagram.directions[boundscache.dragging],
+                (ERDiagram.directions[boundscache.dragging] + 2) % 4
+            )
+        }
+
         // Dots
         const radius = ERDiagram.#shapeSizes.relation.radius
+        this.#ctx.fillStyle = 'slategray'
         this.#ctx.beginPath()
-
+        
         for (let dot of Object.values(boundscache.dots)) {
             this.#ctx.moveTo(dot.x + radius, dot.y)
             this.#ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2)
         }
-
+        
         this.#ctx.fill()
-        this.#ctx.stroke()
+        // this.#ctx.stroke()
+        this.#ctx.fillStyle = '#000'
 
         this.#drawText(
             relation.pos.x + (ERDiagram.#shapeSizes.relation.w / 2),
@@ -600,7 +671,6 @@ class ERDiagram {
 
         switch (boundscache.direction) {
         case 0:
-            console.log('a?')
             this.#drawText(boundscache.centerx, boundscache.centery - textGap, attr.text, 'middle', 'bottom')
             break
 
@@ -624,62 +694,19 @@ class ERDiagram {
 
     #drawLink(linkid) {
         this.#cacheLinkBounds(linkid)
-
-        const drawRelText = (position, halves, text) => {
-            switch (position) {
-            case 0:
-                this.#drawText(halves.x, halves.y - ERDiagram.#shapeSizes.link.textGap, text, 'center', 'bottom')
-                break
-
-            case 1:
-                this.#drawText(halves.x, halves.y, text, 'left', 'bottom')
-                break
-
-            case 2:
-                this.#drawText(halves.x, halves.y + ERDiagram.#shapeSizes.link.textGap, text, 'center', 'top')
-                break
-
-            case 3:
-                this.#drawText(halves.x, halves.y, text, 'right', 'bottom')
-                break
-            }
-        }
-
-        const boundscache = this.#boundscache[linkid]
         const link = this.#items[linkid]
+        const boundscache = this.#boundscache[linkid]
 
-        this.#ctx.beginPath()
-        this.#ctx.moveTo(boundscache.entityHalves[boundscache.minline.start].x, boundscache.entityHalves[boundscache.minline.start].y)
-
-        if ((boundscache.minline.start + boundscache.minline.end) % 2 == 0) {
-            if (boundscache.minline.start % 2 == 0) {
-                // bottom --> top; top --> bottom
-                const avgy = (boundscache.entityHalves[boundscache.minline.start].y + boundscache.relationHalves[boundscache.minline.end].y) / 2
-                this.#ctx.lineTo(boundscache.entityHalves[boundscache.minline.start].x, avgy)
-                this.#ctx.lineTo(boundscache.relationHalves[boundscache.minline.end].x, avgy)
-
-            } else {
-                // left --> right; right --> left
-                const avgx = (boundscache.entityHalves[boundscache.minline.start].x + boundscache.relationHalves[boundscache.minline.end].x) / 2
-                this.#ctx.lineTo(avgx, boundscache.entityHalves[boundscache.minline.start].y)
-                this.#ctx.lineTo(avgx, boundscache.relationHalves[boundscache.minline.end].y)
-            }
-
-        } else {
-            if (boundscache.minline.start % 2 == 0) {
-                // top or bottom --> left or right
-                this.#ctx.lineTo(boundscache.entityHalves[boundscache.minline.start].x, boundscache.relationHalves[boundscache.minline.end].y)
-            } else {
-                // left or right --> top or bottom
-                this.#ctx.lineTo(boundscache.relationHalves[boundscache.minline.end].x, boundscache.entityHalves[boundscache.minline.start].y)
-            }
-        }
-
-        drawRelText(boundscache.minline.end, boundscache.relationHalves[boundscache.minline.end], link.text)
-
-        this.#ctx.lineTo(boundscache.relationHalves[boundscache.minline.end].x, boundscache.relationHalves[boundscache.minline.end].y)
-        this.#ctx.stroke()
-        this.#ctx.closePath()
+        this.#drawLine(
+            boundscache.entityHalves[boundscache.minline.start].x,
+            boundscache.entityHalves[boundscache.minline.start].y,
+            boundscache.relationHalves[boundscache.minline.end].x,
+            boundscache.relationHalves[boundscache.minline.end].y,
+            boundscache.minline.start,
+            boundscache.minline.end,
+            '',
+            link.text
+        )
     }
 
     #moveItem(entityid, x, y) {
@@ -722,6 +749,12 @@ class ERDiagram {
 
     #moveRelation(relationid, x, y) {
         const entity = this.#items[relationid]
+        const boundscache = this.#boundscache[relationid]
+
+        if (boundscache.dragging !== null) {
+            boundscache.dragto = {x: x, y: y}
+            return
+        }
         entity.pos.x = x - this.#offsetcoords.x
         entity.pos.y = y - this.#offsetcoords.y
         delete this.#boundscache[relationid]
@@ -835,15 +868,25 @@ class ERDiagram {
                     herons(boundscache.p4.x, boundscache.p4.y, boundscache.p1.x, boundscache.p1.y, x, y)
                 )
 
-                if (totalarea === ERDiagram.#shapeSizes.relation.area) {
-                    return entityid
+                if (totalarea !== ERDiagram.#shapeSizes.relation.area) break
+
+                boundscache.dragging = null
+                const diameter = ERDiagram.#shapeSizes.relation.radius * 2
+
+                for (let dot in boundscache.dots) {
+                    if (
+                        x >= boundscache.dots[dot].bounds.x && x <= boundscache.dots[dot].bounds.x + diameter &&
+                        y >= boundscache.dots[dot].bounds.y && y <= boundscache.dots[dot].bounds.y + diameter
+                    ) {
+                        boundscache.dragging = dot
+                        break
+                    }
                 }
 
-                break
+                return entityid
             }
 
             case 'entity-attr': {
-                console.log(x, y, boundscache)
                 if (
                     x >= boundscache.bounds.x && x <= boundscache.bounds.x + boundscache.bounds.w &&
                     y >= boundscache.bounds.y && y <= boundscache.bounds.y + boundscache.bounds.h
@@ -898,8 +941,24 @@ class ERDiagram {
 
     #handleMouseUp(e) {
         this.#isDragging = false
-        this.#draggingEntity = null
         this.#offsetcoords = {x: null, y: null}
+
+        if (this.#draggingEntity !== null && this.#items[this.#draggingEntity].type === 'relation') {
+            const bdbox = this.#canvas.getBoundingClientRect()
+            const elementid = this.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
+
+            if (elementid !== null) {
+                const element = this.#items[elementid]
+                if (element.type === 'entity' && !element.connections.some(el => this.#items[this.#draggingEntity].connections.includes(el))) {
+                    this.createLink(elementid, this.#draggingEntity, '(0, N)')
+                }
+            }
+
+            this.#boundscache[this.#draggingEntity].dragging = null
+            this.redraw()
+        }
+
+        this.#draggingEntity = null
     }
 
     #handleMouseMove(e) {
@@ -916,12 +975,13 @@ class ERDiagram {
 const canvas = document.getElementById('er-diagram')
 const erd = new ERDiagram(canvas)
 const entity1 = erd.createEntity(100, 60, 'Utente')
-const relation = erd.createRelation(400, 100, 'Possiede')
-const entity2 = erd.createEntity(400, 300, 'Animale')
+const relation = erd.createRelation(350, 100, 'Possiede')
+const entity2 = erd.createEntity(600, 100, 'Animale')
+const entity3 = erd.createEntity(300, 300, 'Medico')
 erd.createEntityAttribute(entity1, 10, 'ID', true)
 erd.createRelationAttribute(relation, 50, 'TEST')
-erd.createLink(entity1, relation, '(0, N)', '(1, N)')
-erd.createLink(entity2, relation, '(0, N)', '(1, N)')
+erd.createLink(entity1, relation, '(0, N)')
+erd.createLink(entity2, relation, '(0, N)')
 
 erd.redraw()
 
