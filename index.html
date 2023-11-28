@@ -98,12 +98,28 @@
                         <button><img src="img/plus.svg">Entità</button>
                         <button><img src="img/plus.svg">Relazione</button>
                     </div>
-                    <canvas id="er-diagram" width="800" height="450">
-
-                    </canvas>
+                    <canvas id="er-diagram" width="800" height="450"></canvas>
                 </div>
                 <div class="modal-buttons">
                     <button class="confirm">Elimina</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal" id="modal-createrel">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Crea relazione
+                </div>
+                <div class="modal-body">
+                    <canvas id="er-createrel" width="500" height="125"></canvas>
+                    <fieldset>
+                        <input type="radio" value="(0, 1)">
+                    </fieldset>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Crea relazione</button>
                     <button class="cancel">Annulla</button>
                 </div>
             </div>

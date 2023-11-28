@@ -26,6 +26,7 @@ class ERDiagram {
     #isDragging = false
     #draggingEntity = null
     #offsetcoords = {x: null, y: null}
+    #draggingEnabled = false
     #items = {}
     #boundscache = {}
     #lastentity = -1
@@ -80,11 +81,6 @@ class ERDiagram {
         this.#canvas = canvas
         this.#canvasSizes = {w: canvas.width, h: canvas.height}
         this.#ctx = this.#createContext()
-
-        // TODO: Maybe make the user choose when to activate these listeners?
-        document.addEventListener('mousedown', e => this.#handleMouseDown(e))
-        document.addEventListener('mouseup', e => this.#handleMouseUp(e))
-        this.#canvas.addEventListener('mousemove', e => this.#handleMouseMove(e))
     }
 
     #createContext() {
@@ -582,18 +578,19 @@ class ERDiagram {
         }
 
         // Dots
-        const radius = ERDiagram.#shapeSizes.relation.radius
-        this.#ctx.fillStyle = 'slategray'
-        this.#ctx.beginPath()
-        
-        for (let dot of Object.values(boundscache.dots)) {
-            this.#ctx.moveTo(dot.x + radius, dot.y)
-            this.#ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2)
+        if (this.#draggingEnabled) {
+            const radius = ERDiagram.#shapeSizes.relation.radius
+            this.#ctx.fillStyle = 'slategray'
+            this.#ctx.beginPath()
+            
+            for (let dot of Object.values(boundscache.dots)) {
+                this.#ctx.moveTo(dot.x + radius, dot.y)
+                this.#ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2)
+            }
+            
+            this.#ctx.fill()
+            this.#ctx.fillStyle = '#000'
         }
-        
-        this.#ctx.fill()
-        // this.#ctx.stroke()
-        this.#ctx.fillStyle = '#000'
 
         this.#drawText(
             relation.pos.x + (ERDiagram.#shapeSizes.relation.w / 2),
@@ -915,7 +912,7 @@ class ERDiagram {
     }
 
     #handleMouseDown(e) {
-        const bdbox = canvas.getBoundingClientRect()
+        const bdbox = this.#canvas.getBoundingClientRect()
 
         if (
             e.x < bdbox.x || e.y < bdbox.y ||
@@ -924,7 +921,7 @@ class ERDiagram {
         ) {
             return
         }
- 
+
         this.#isDragging = true
         this.#draggingEntity = erd.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
         if (this.#draggingEntity === null) return
@@ -970,6 +967,20 @@ class ERDiagram {
         this.#moveItem(this.#draggingEntity, e.x - bdbox.x, e.y - bdbox.y)
         this.redraw()
     }
+
+    toggleDragging(status) {
+        if (status) {
+            document.addEventListener('mousedown', e => this.#handleMouseDown(e))
+            document.addEventListener('mouseup', e => this.#handleMouseUp(e))
+            this.#canvas.addEventListener('mousemove', e => this.#handleMouseMove(e))
+        } else {
+            document.removeEventListener('mousedown', e => this.#handleMouseDown(e))
+            document.removeEventListener('mouseup', e => this.#handleMouseUp(e))
+            this.#canvas.removeEventListener('mousemove', e => this.#handleMouseMove(e))
+        }
+
+        this.#draggingEnabled = status
+    }
 }
 
 const canvas = document.getElementById('er-diagram')
@@ -983,7 +994,17 @@ erd.createRelationAttribute(relation, 50, 'TEST')
 erd.createLink(entity1, relation, '(0, N)')
 erd.createLink(entity2, relation, '(0, N)')
 
+erd.toggleDragging(true)
 erd.redraw()
+
+
+// TEMP
+const createrel_canvas = document.getElementById('er-createrel')
+const createrel_erd = new ERDiagram(createrel_canvas)
+const createrel_entity = createrel_erd.createEntity(50, 25, 'Utente')
+const createrel_relation = createrel_erd.createRelation(300, 25, 'Possiede')
+createrel_erd.createLink(createrel_entity, createrel_relation, '(0, 1)')
+createrel_erd.redraw()
 
 // const drawAttribute = (ctx, x, y, direction, fill = false, text = '') => {
 //     const length = 20
