@@ -23,6 +23,7 @@ const clamp = (val, min, max) => Math.min(max, Math.max(min, val))
 
 class ERDiagram {
     static directions = {top: 0, right: 1, bottom: 2, left: 3}
+    #createrel_modal = null
     #isDragging = false
     #draggingEntity = null
     #offsetcoords = {x: null, y: null}
@@ -63,6 +64,7 @@ class ERDiagram {
     }
 
     static {
+        // Static shape sizes
         const slope = this.#shapeSizes.relation.h / this.#shapeSizes.relation.w
         const rads = Math.atan(slope)
 
@@ -77,10 +79,22 @@ class ERDiagram {
         })
     }
 
-    constructor(canvas) {
+    constructor(canvas, createrel_modal_element = null) {
         this.#canvas = canvas
         this.#canvasSizes = {w: canvas.width, h: canvas.height}
         this.#ctx = this.#createContext()
+        
+        // For diagrams that do not require editing
+        if (createrel_modal_element === null) return
+
+        this.#createrel_modal = new Modal(createrel_modal_element)
+        this.#createrel_modal.setCancel(this.#createrel_modal.element.querySelector('button.cancel'))
+
+        for (let el of this.#createrel_modal.element.querySelectorAll('input[type="radio"]')) {
+            el.onclick = () => {
+                this.#createrel_modal.element.querySelector('button.confirm').removeAttribute('disabled')
+            }
+        }
     }
 
     #createContext() {
@@ -472,6 +486,10 @@ class ERDiagram {
         this.#items[entityid].connections.push(this.#lastentity)
         this.#items[relationid].connections.push(this.#lastentity)
         return this.#lastentity
+    }
+
+    editLink(linkid, text) {
+        this.#items[linkid].text = text
     }
 
     #drawText(x, y, text, textAlign, textBaseline) {
@@ -947,7 +965,14 @@ class ERDiagram {
             if (elementid !== null) {
                 const element = this.#items[elementid]
                 if (element.type === 'entity' && !element.connections.some(el => this.#items[this.#draggingEntity].connections.includes(el))) {
-                    this.createLink(elementid, this.#draggingEntity, '(0, N)')
+                    this.#createrel_modal.open()
+
+                    this.#createrel_modal.setConfirm(ERDiagram.#createrel_modal.element.querySelector('button.confirm'), () => {
+                        this.createLink(
+                            elementid, this.#draggingEntity,
+                            '(' + (this.#createrel_modal.element.querySelector('input[type="radio"].checked').split('').join(', ')) + ')'
+                        )
+                    }).bind(this)
                 }
             }
 
@@ -969,6 +994,8 @@ class ERDiagram {
     }
 
     toggleDragging(status) {
+        if (this.#createrel_modal === null) return
+
         if (status) {
             document.addEventListener('mousedown', e => this.#handleMouseDown(e))
             document.addEventListener('mouseup', e => this.#handleMouseUp(e))
@@ -983,8 +1010,11 @@ class ERDiagram {
     }
 }
 
-const canvas = document.getElementById('er-diagram')
-const erd = new ERDiagram(canvas)
+const erd = new ERDiagram(
+    document.getElementById('er-diagram'),
+    document.getElementById('modal-createrel')
+)
+
 const entity1 = erd.createEntity(100, 60, 'Utente')
 const relation = erd.createRelation(350, 100, 'Possiede')
 const entity2 = erd.createEntity(600, 100, 'Animale')
@@ -997,7 +1027,6 @@ erd.createLink(entity2, relation, '(0, N)')
 erd.toggleDragging(true)
 erd.redraw()
 
-
 // TEMP
 const createrel_canvas = document.getElementById('er-createrel')
 const createrel_erd = new ERDiagram(createrel_canvas)
@@ -1005,241 +1034,3 @@ const createrel_entity = createrel_erd.createEntity(50, 25, 'Utente')
 const createrel_relation = createrel_erd.createRelation(300, 25, 'Possiede')
 createrel_erd.createLink(createrel_entity, createrel_relation, '(0, 1)')
 createrel_erd.redraw()
-
-// const drawAttribute = (ctx, x, y, direction, fill = false, text = '') => {
-//     const length = 20
-//     const radius = 5
-//     const textGap = 5
-//     ctx.beginPath()
-//     ctx.moveTo(x, y)
-
-//     const sizes = {direction: direction}
-
-//     switch(direction) {
-//         case 0:
-//         ctx.lineTo(x, y - length)
-//         ctx.moveTo(x + radius, y - length - radius)
-//         ctx.arc(x, y - length - radius, radius, 0, 2 * Math.PI)
-
-//         if (text !== '') {
-//             ctx.textAlign = 'center'
-//             ctx.textBaseline = 'bottom'
-//             ctx.fillText(text, x, y - length - radius - textGap)
-//         }
-
-//         sizes.x = x - radius
-//         sizes.y = y - length - (radius * 2)
-//         sizes.xs = radius * 2
-//         sizes.ys = length + (radius * 2)
-
-//         break
-
-//     case 1:
-//         ctx.lineTo(x + length, y)
-//         ctx.moveTo(x + length + (radius * 2), y)
-//         ctx.arc(x + length + radius, y, radius, 0, 2 * Math.PI)
-
-//         if (text !== '') {
-//             ctx.textAlign = 'left'
-//             ctx.textBaseline = 'bottom'
-//             ctx.fillText(text, x + length - (radius * 2), y - textGap)
-//         }
-
-//         sizes.x = x
-//         sizes.y = y - radius
-//         sizes.xs = length + (radius * 2)
-//         sizes.ys = radius * 2
-
-//         break
-
-//     case 2:
-//         ctx.lineTo(x, y + length)
-//         ctx.moveTo(x + radius, y + length + radius)
-//         ctx.arc(x, y + length + radius, radius, 0, 2 * Math.PI)
-
-//         if (text !== '') {
-//             ctx.textAlign = 'center'
-//             ctx.textBaseline = 'top'
-//             ctx.fillText(text, x, y + length + radius + radius + textGap)
-//         }
-
-//         sizes.x = x - length - (radius * 2)
-//         sizes.y = y - radius
-//         sizes.xs = length + (radius * 2)
-//         sizes.ys = radius * 2
-
-//         break
-
-//     case 3:
-//         ctx.lineTo(x - length, y)
-//         ctx.arc(x - length - radius, y, radius, 0, 2 * Math.PI)
-
-//         if (text !== '') {
-//             ctx.textAlign = 'right'
-//             ctx.textBaseline = 'bottom'
-//             ctx.fillText(text, x - length + (radius * 2), y - textGap)
-//         }
-
-//         sizes.x = x - radius
-//         sizes.y = y
-//         sizes.xs = radius * 2
-//         sizes.ys = length + (radius * 2)
-
-//         break
-//     }
-
-//     if (fill) ctx.fill()
-//     ctx.stroke()
-//     ctx.closePath()
-
-//     items.entities.push({
-//         type: 'attribute',
-//         text: text,
-//         sizes: sizes
-//     })
-// }
-
-// const drawLine = (startEn, endEn, startrel = '', endrel = '') => {
-//     // 0 = top; 1 = right; 2 = down; 3 = left
-
-//     const textGap = 5
-
-//     const drawRelText = (position, halves, text) => {
-//         switch (position) {
-//         case 0:
-//             ctx.textAlign = 'center'
-//             ctx.textBaseline = 'bottom'
-//             ctx.fillText(text, halves.x, halves.y - textGap)
-//             break
-
-//         case 1:
-//             ctx.textAlign = 'left'
-//             ctx.textBaseline = 'bottom'
-//             ctx.fillText(text, halves.x, halves.y)
-//             break
-
-//         case 2:
-//             ctx.textAlign = 'center'
-//             ctx.textBaseline = 'top'
-//             ctx.fillText(text, halves.x, halves.y + textGap)
-//             break
-
-//         case 3:
-//             ctx.textAlign = 'right'
-//             ctx.textBaseline = 'bottom'
-//             ctx.fillText(text, halves.x, halves.y)
-//         }
-//     }
-
-//     const startHalves = [
-//         {x: startEn.sizes.x + (startEn.sizes.xs / 2), y: startEn.sizes.y},
-//         {x: startEn.sizes.x + startEn.sizes.xs, y: startEn.sizes.y + (startEn.sizes.ys / 2)},
-//         {x: startEn.sizes.x + (startEn.sizes.xs / 2), y: startEn.sizes.y + startEn.sizes.ys},
-//         {x: startEn.sizes.x, y: startEn.sizes.y  + (startEn.sizes.ys / 2)}
-//     ]
-
-//     const endHalves = [
-//         {x: endEn.sizes.x + (endEn.sizes.xs / 2), y: endEn.sizes.y},
-//         {x: endEn.sizes.x + endEn.sizes.xs, y: endEn.sizes.y + (endEn.sizes.ys / 2)},
-//         {x: endEn.sizes.x + (endEn.sizes.xs / 2), y: endEn.sizes.y + endEn.sizes.ys},
-//         {x: endEn.sizes.x, y: endEn.sizes.y  + (endEn.sizes.ys / 2)}
-//     ]
-
-//     let minline = {len: Infinity}
-    
-//     for (let i = 0; i < 4; i++) {
-//         for (let j = 0; j < 4; j++) {
-//             const len = Math.sqrt(Math.pow(startHalves[i].x - endHalves[j].x, 2) + Math.pow(startHalves[i].y - endHalves[j].y, 2))
-//             if (len < minline.len) minline = {len: len, start: i, end: j}
-//         }
-//     }
-
-//     ctx.beginPath()
-//     ctx.moveTo(startHalves[minline.start].x, startHalves[minline.start].y)
-
-//     if ((minline.start + minline.end) % 2 == 0) {
-//         if (minline.start % 2 == 0) {
-//             // bottom --> top; top --> bottom
-//             const avgy = (startHalves[minline.start].y + endHalves[minline.end].y) / 2
-//             ctx.lineTo(startHalves[minline.start].x, avgy)
-//             ctx.lineTo(endHalves[minline.end].x, avgy)
-
-//         } else {
-//             // left --> right; right --> left
-//             const avgx = (startHalves[minline.start].x + endHalves[minline.end].x) / 2
-//             ctx.lineTo(avgx, startHalves[minline.start].y)
-//             ctx.lineTo(avgx, endHalves[minline.end].y)
-//         }
-        
-//     } else {
-//         if (minline.start % 2 == 0) {
-//             // top or bottom --> left or right
-//             ctx.lineTo(startHalves[minline.start].x, endHalves[minline.end].y)
-//         } else {
-//             // left or right --> top or bottom
-//             ctx.lineTo(endHalves[minline.end].x, startHalves[minline.start].y)
-//         }
-//     }
-
-//     if (startrel !== '') drawRelText(minline.start, startHalves[minline.start], startrel)
-//     if (endrel !== '') drawRelText(minline.end, endHalves[minline.end], endrel)
-
-//     ctx.lineTo(endHalves[minline.end].x, endHalves[minline.end].y)
-//     ctx.stroke()
-//     ctx.closePath()
-// }
-
-
-// TEMPORARY
-// const drawExample = (relx, rely) => {
-    // drawRect(ctx, 300, 200, 200, 100, 'users')
-    // drawRelation(ctx, relx, rely, 200, 100, 'test')
-
-    // drawAttribute(ctx, 310, 200, 0, true, 'ID')
-    // drawAttribute(ctx, 350, 200, 0, false, 'nome')
-    // drawAttribute(ctx, 415, 200, 0, false, 'cognome')
-    // drawAttribute(ctx, 500, 210, 1, false, 'Codice Fiscale')
-    // drawAttribute(ctx, 320, 300, 2, false, 'Email')
-    // drawAttribute(ctx, 300, 210, 3, false, 'Telefono')
-
-    // drawLine(items[0], items[1], '(0, N)', '(1, N)')
-// }
-
-// drawExample (50, 50)
-
-
-// document.onmousedown = e => {
-//     const bdRect = canvas.getBoundingClientRect()
-//     dragstartpos.x = e.x - bdRect.x
-//     dragstartpos.y = e.y - bdRect.y
-
-//     // Check if click is out of bounds
-//     if (
-//         dragstartpos.x < 0 || dragstartpos.x > canvasWidth ||
-//         dragstartpos.y < 0 || dragstartpos.y > canvasHeight
-//     ) {
-//         dragstartpos.x = Infinity
-//         dragstartpos.y = Infinity
-//         return
-//     }
-
-//     // Check which element is being clicked
-    
-//     for (let el of items.entities) {
-
-//     }
-
-//     isDragging = true
-// }
-
-// document.onmouseup = () => isDragging = false
-
-// canvas.onmousemove = e => {
-//     if (!isDragging) return
-
-//     const bdRect = canvas.getBoundingClientRect()
-//     ctx.clearRect(0, 0, canvasWidth, canvasHeight)
-//     items.splice(0, items.length)
-//     // moveRelation(ctx, 1, e.x - bdRect.x, e.y - bdRect.y)
-//     drawExample(e.x - bdRect.x, e.y - bdRect.y)
-// }

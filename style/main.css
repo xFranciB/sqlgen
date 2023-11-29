@@ -82,12 +82,21 @@ button.cancel:hover {
     background-color: var(--red-hover);
 }
 
+button[disabled] {
+    background-color: gray !important;
+    cursor: not-allowed !important;
+}
+
 input[type="checkbox"] {
     accent-color: var(--accent);
 }
 
 input[type="range"] {
     width: 98%;
+}
+
+fieldset {
+    border: none;
 }
 
 .hidden {
@@ -235,6 +244,11 @@ nav > button {
     border: 2px solid var(--accent);
     border-radius: 5px;
     padding: 5px;
+}
+
+.modal-subtitle {
+    font-weight: 700;
+    margin: 5px 0;
 }
 
 main {

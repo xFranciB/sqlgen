@@ -107,19 +107,35 @@
             </div>
         </div>
 
-        <div class="modal" id="modal-createrel">
+        <div class="modal hidden" id="modal-createrel">
             <div class="modal-content">
                 <div class="modal-title">
                     Crea relazione
                 </div>
                 <div class="modal-body">
                     <canvas id="er-createrel" width="500" height="125"></canvas>
-                    <fieldset>
-                        <input type="radio" value="(0, 1)">
+                    <div class="modal-subtitle">Cardinalità</div>
+                    <fieldset id="fieldset-cardinality">
+                        <div>
+                            <input type="radio" name="cardinality" value="01">
+                            <label>(0, 1)</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="cardinality" value="11">
+                            <label>(1, 1)</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="cardinality" value="0N">
+                            <label>(0, N)</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="cardinality" value="1N">
+                            <label>(1, N)</label>
+                        </div>
                     </fieldset>
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm">Crea relazione</button>
+                    <button class="confirm" disabled>Crea relazione</button>
                     <button class="cancel">Annulla</button>
                 </div>
             </div>
