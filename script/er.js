@@ -23,7 +23,10 @@ const clamp = (val, min, max) => Math.min(max, Math.max(min, val))
 
 class ERDiagram {
     static directions = {top: 0, right: 1, bottom: 2, left: 3}
-    #createrel_modal = null
+    #createassoc_modal = null
+    #createassoc_erd
+    #createentity_modal = null
+    #createassoc_erd_items = {}
     #isDragging = false
     #draggingEntity = null
     #offsetcoords = {x: null, y: null}
@@ -79,22 +82,54 @@ class ERDiagram {
         })
     }
 
-    constructor(canvas, createrel_modal_element = null) {
+    constructor(
+        canvas,
+        createassoc_modal_element = null,
+        createentity_button = null,
+        createentity_modal_element = null,
+        createassocation_button = null,
+        createassocation_modal_element = null
+    ) {
         this.#canvas = canvas
         this.#canvasSizes = {w: canvas.width, h: canvas.height}
         this.#ctx = this.#createContext()
-        
+
         // For diagrams that do not require editing
-        if (createrel_modal_element === null) return
+        // If `createassoc_modal_element` is not null the other
+        // parameters should not be as well.
+        if (createassoc_modal_element === null) return
 
-        this.#createrel_modal = new Modal(createrel_modal_element)
-        this.#createrel_modal.setCancel(this.#createrel_modal.element.querySelector('button.cancel'))
+        // Create Association modal
+        this.#createassoc_modal = new Modal(createassoc_modal_element)
+        this.#createassoc_modal.setCancel(this.#createassoc_modal.element.querySelector('button.cancel'), (() => {
+            this.redraw()
+        }).bind(this))
 
-        for (let el of this.#createrel_modal.element.querySelectorAll('input[type="radio"]')) {
+        console.log(this.#createassoc_modal.element.querySelector('#er-createassoc'))
+        this.#createassoc_erd = new ERDiagram(this.#createassoc_modal.element.querySelector('#er-createassoc'))
+        this.#createassoc_erd_items.entity = this.#createassoc_erd.createEntity(50, 25)
+        this.#createassoc_erd_items.relation = this.#createassoc_erd.createassocation(300, 25)
+        this.#createassoc_erd_items.link = this.#createassoc_erd.createLink(
+            this.#createassoc_erd_items.entity,
+            this.#createassoc_erd_items.relation
+        )
+
+        for (let el of this.#createassoc_modal.element.querySelectorAll('input[type="radio"]')) {
             el.onclick = () => {
-                this.#createrel_modal.element.querySelector('button.confirm').removeAttribute('disabled')
+                this.#createassoc_modal.element.querySelector('button.confirm').removeAttribute('disabled')
+
+                this.#createassoc_erd.editLink(
+                    this.#createassoc_erd_items.link,
+                    '(' + (this.#createassoc_modal.element.querySelector('input[type="radio"]:checked').value.split('').join(', ')) + ')'
+                )
+
+                this.#createassoc_erd.redraw()
             }
         }
+
+        // Create Entity modal
+        this.#createentity_modal = new Modal(createentity_modal_element)
+        createentity_button.onclick = () => this.#createentity_modal.open()
     }
 
     #createContext() {
@@ -431,7 +466,7 @@ class ERDiagram {
         return this.#lastentity
     }
 
-    createRelation(x, y, text = '') {
+    createassocation(x, y, text = '') {
         this.#items[++this.#lastentity] = {
             type: 'relation',
             text: text,
@@ -460,7 +495,7 @@ class ERDiagram {
         return this.#lastentity
     }
 
-    createRelationAttribute(relationid, offset, text = '', primarykey = false) {
+    createassocationAttribute(relationid, offset, text = '', primarykey = false) {
         this.#items[++this.#lastentity] = {
             type: 'relation-attr',
             text: text,
@@ -486,6 +521,14 @@ class ERDiagram {
         this.#items[entityid].connections.push(this.#lastentity)
         this.#items[relationid].connections.push(this.#lastentity)
         return this.#lastentity
+    }
+
+    editEntity(entityid, text) {
+        this.#items[entityid].text = text
+    }
+
+    editRelation(relationid, text) {
+        this.#items[relationid].text = text
     }
 
     editLink(linkid, text) {
@@ -583,8 +626,6 @@ class ERDiagram {
         this.#ctx.closePath()
 
         if (boundscache.dragging !== null) {
-            console.log()
-
             this.#drawLine(
                 boundscache.dots[boundscache.dragging].x,
                 boundscache.dots[boundscache.dragging].y,
@@ -955,32 +996,54 @@ class ERDiagram {
     }
 
     #handleMouseUp(e) {
+        const relationid = this.#draggingEntity
         this.#isDragging = false
         this.#offsetcoords = {x: null, y: null}
-
-        if (this.#draggingEntity !== null && this.#items[this.#draggingEntity].type === 'relation') {
-            const bdbox = this.#canvas.getBoundingClientRect()
-            const elementid = this.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
-
-            if (elementid !== null) {
-                const element = this.#items[elementid]
-                if (element.type === 'entity' && !element.connections.some(el => this.#items[this.#draggingEntity].connections.includes(el))) {
-                    this.#createrel_modal.open()
-
-                    this.#createrel_modal.setConfirm(ERDiagram.#createrel_modal.element.querySelector('button.confirm'), () => {
-                        this.createLink(
-                            elementid, this.#draggingEntity,
-                            '(' + (this.#createrel_modal.element.querySelector('input[type="radio"].checked').split('').join(', ')) + ')'
-                        )
-                    }).bind(this)
-                }
-            }
-
-            this.#boundscache[this.#draggingEntity].dragging = null
-            this.redraw()
-        }
-
         this.#draggingEntity = null
+
+        if (relationid !== null && this.#items[relationid].type === 'relation') {
+            this.#boundscache[relationid].dragging = null
+            const bdbox = this.#canvas.getBoundingClientRect()
+            const entityid = this.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
+
+            if (entityid !== null) {
+                const entity = this.#items[entityid]
+
+                if (entity.type === 'entity' && !entity.connections.some(el => this.#items[relationid].connections.includes(el))) {
+                    this.#createassoc_modal.element.querySelector('button.confirm').setAttribute('disabled', '')
+                    const selectedradio = this.#createassoc_modal.element.querySelector('input[type="radio"]:checked')
+                    if (selectedradio !== null) selectedradio.checked = false
+
+                    this.#createassoc_erd.editEntity(
+                        this.#createassoc_erd_items.entity,
+                        entity.text
+                    )
+                    this.#createassoc_erd.editRelation(
+                        this.#createassoc_erd_items.relation,
+                        this.#items[relationid].text
+                    )
+                    this.#createassoc_erd.editLink(
+                        this.#createassoc_erd_items.link,
+                        ''
+                    )
+
+                    this.#createassoc_erd.redraw()
+                    this.#createassoc_modal.open()
+
+                    this.#createassoc_modal.setConfirm(this.#createassoc_modal.element.querySelector('button.confirm'), (() => {
+                        this.createLink(
+                            entityid, relationid,
+                            '(' + (this.#createassoc_modal.element.querySelector('input[type="radio"]:checked').value.split('').join(', ')) + ')'
+                        )
+
+                        this.redraw()
+                    }).bind(this))
+
+                }
+            } else {
+                this.redraw()
+            }
+        }
     }
 
     #handleMouseMove(e) {
@@ -994,7 +1057,7 @@ class ERDiagram {
     }
 
     toggleDragging(status) {
-        if (this.#createrel_modal === null) return
+        if (this.#createassoc_modal === null) return
 
         if (status) {
             document.addEventListener('mousedown', e => this.#handleMouseDown(e))
@@ -1012,15 +1075,17 @@ class ERDiagram {
 
 const erd = new ERDiagram(
     document.getElementById('er-diagram'),
-    document.getElementById('modal-createrel')
+    document.getElementById('modal-createassoc'),
+    document.getElementById('er-createentity'),
+    document.getElementById('modal-createentity')
 )
 
 const entity1 = erd.createEntity(100, 60, 'Utente')
-const relation = erd.createRelation(350, 100, 'Possiede')
+const relation = erd.createassocation(350, 100, 'Possiede')
 const entity2 = erd.createEntity(600, 100, 'Animale')
 const entity3 = erd.createEntity(300, 300, 'Medico')
 erd.createEntityAttribute(entity1, 10, 'ID', true)
-erd.createRelationAttribute(relation, 50, 'TEST')
+erd.createassocationAttribute(relation, 50, 'TEST')
 erd.createLink(entity1, relation, '(0, N)')
 erd.createLink(entity2, relation, '(0, N)')
 
@@ -1028,9 +1093,9 @@ erd.toggleDragging(true)
 erd.redraw()
 
 // TEMP
-const createrel_canvas = document.getElementById('er-createrel')
-const createrel_erd = new ERDiagram(createrel_canvas)
-const createrel_entity = createrel_erd.createEntity(50, 25, 'Utente')
-const createrel_relation = createrel_erd.createRelation(300, 25, 'Possiede')
-createrel_erd.createLink(createrel_entity, createrel_relation, '(0, 1)')
-createrel_erd.redraw()
+// const createassoc_canvas = document.getElementById('er-createassoc')
+// const createassoc_erd = new ERDiagram(createassoc_canvas)
+// const createassoc_entity = createassoc_erd.createEntity(50, 25, 'Utente')
+// const createassoc_relation = createassoc_erd.createassocation(300, 25, 'Possiede')
+// createassoc_erd.createLink(createassoc_entity, createassoc_relation, '(0, 1)')
+// createassoc_erd.redraw()

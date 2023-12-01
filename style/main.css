@@ -87,7 +87,8 @@ button[disabled] {
     cursor: not-allowed !important;
 }
 
-input[type="checkbox"] {
+input[type="checkbox"],
+input[type="radio"] {
     accent-color: var(--accent);
 }
 
@@ -320,12 +321,14 @@ main {
     background-color: #00000020;
 }
 
-#table-structure input[type="text"] {
+#table-structure input[type="text"],
+#er-attributestable input[type="text"] {
     font-size: 1em;
     padding: 0 2px;
     width: 150px;
+    border-radius: 0;
     background-color: transparent;
-    border: none;
+    border: none !important;
     border-bottom: 1px solid var(--mainbar);
 }
 
@@ -468,4 +471,37 @@ main {
 
 #er-controls > button:hover {
     background-color: var(--mainbar-hover);
+}
+
+#modal-createentity .modal-body > div > * {
+    display: block;
+}
+
+#modal-createentity .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#er-attributestable {
+    border-collapse: collapse;
+}
+
+#er-attributestable td:not(:first-child),
+#er-attributestable th:not(:first-child) {
+    padding: 0 20px;
+}
+
+#er-attributestable td,
+#er-attributestable th {
+    padding: 0 5px;
+    border: 1px solid black;
+}
+
+#er-attributestable th:first-child {
+    text-align: left;
+}
+
+#er-attributestable td:not(:first-child) {
+    text-align: center;
 }

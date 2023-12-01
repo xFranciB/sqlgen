@@ -95,8 +95,8 @@
                 </div>
                 <div class="modal-body">
                     <div id="er-controls">
-                        <button><img src="img/plus.svg">Entità</button>
-                        <button><img src="img/plus.svg">Relazione</button>
+                        <button id="er-createentity"><img src="img/plus.svg">Entità</button>
+                        <button id="er-createrelation"><img src="img/plus.svg">Relazione</button>
                     </div>
                     <canvas id="er-diagram" width="800" height="450"></canvas>
                 </div>
@@ -107,13 +107,52 @@
             </div>
         </div>
 
-        <div class="modal hidden" id="modal-createrel">
+        <div class="modal" id="modal-createentity">
             <div class="modal-content">
                 <div class="modal-title">
-                    Crea relazione
+                    Opzioni Entità
                 </div>
                 <div class="modal-body">
-                    <canvas id="er-createrel" width="500" height="125"></canvas>
+                    <div>
+                        <label>Nome</label>
+                        <input type="text">
+                    </div>
+                    <div>
+                        <label>Attributi</label>
+                        <table id="er-attributestable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Chiave Primaria</th>
+                                    <th>Tipo</th>
+                                    <th>Grandezza</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="text"></td>
+                                    <td><input type="checkbox"></td>
+                                    <td>Stringa variabile</td>
+                                    <td>200</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm" disabled>Salva</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-createassoc">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Opzioni Associazione
+                </div>
+                <div class="modal-body">
+                    <canvas id="er-createassoc" width="500" height="125"></canvas>
                     <div class="modal-subtitle">Cardinalità</div>
                     <fieldset id="fieldset-cardinality">
                         <div>
@@ -135,7 +174,7 @@
                     </fieldset>
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm" disabled>Crea relazione</button>
+                    <button class="confirm" disabled>Salva</button>
                     <button class="cancel">Annulla</button>
                 </div>
             </div>
