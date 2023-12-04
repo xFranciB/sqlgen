@@ -13,18 +13,7 @@ const setType = (row, res) => {
 
     const entryType = row.querySelector('.entry-type')
     entryType.setAttribute('type', JSON.stringify(res))
-    entryType.textContent = ({
-        bit: 'Bit',
-        integer: 'Intero',
-        decimal: 'Virgola fissa',
-        float: 'Virgola mobile',
-        date: 'Data',
-        time: 'Ora',
-        datetime: 'Data e Ora',
-        char: 'Carattere',
-        varchar: 'Testo variabile',
-        text: 'Testo fisso',
-    })[res.type]
+    entryType.textContent = formatType(res.type)
 
     const autoincrement = row.querySelector('.ai-constraint')
 
@@ -115,7 +104,7 @@ const addEmptyRow = () => {
 const addRow = (rowdata) => {
     const row = addEmptyRow()
     row.querySelector('.entry-name').textContent = rowdata.name
-    
+
     for (let c in rowdata.constraints) {
         switch (c) {
         case 'NULL':

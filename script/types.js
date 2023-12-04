@@ -44,6 +44,21 @@ const getType = () => {
     })
 }
 
+const formatType = (type) => {
+    return ({
+        bit: 'Bit',
+        integer: 'Intero',
+        decimal: 'Virgola fissa',
+        float: 'Virgola mobile',
+        date: 'Data',
+        time: 'Ora',
+        datetime: 'Data e Ora',
+        char: 'Carattere',
+        varchar: 'Testo variabile',
+        text: 'Testo fisso',
+    })[type]
+}
+
 let removecallback = null
 
 const setData = (desc, min, max, size) => {

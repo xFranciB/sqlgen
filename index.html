@@ -34,6 +34,13 @@
                 <td><input type="checkbox" class="hidden unique-constraint"><img class="constraint unique-constraint hidden" src="img/check.svg"></td>
             </tr>
         </template>
+        <template id="ertype-row-template">
+            <tr>
+                <td><input type="text"></td>
+                <td><input type="checkbox"></td>
+                <td><img src="img/edit.svg" class="filter-accent" alt="edit row type"><span></span></td>
+            </tr>
+        </template>
 
         <div class="modal hidden" id="modal-createtable">
             <div class="modal-content">
@@ -107,40 +114,32 @@
             </div>
         </div>
 
-        <div class="modal" id="modal-createentity">
+        <div class="modal hidden" id="modal-edititem">
             <div class="modal-content">
-                <div class="modal-title">
-                    Opzioni Entità
-                </div>
+                <div class="modal-title"></div>
                 <div class="modal-body">
+                    <input id="erentity-name" placeholder="Nome" type="text">
+                    <br><br>
                     <div>
-                        <label>Nome</label>
-                        <input type="text">
-                    </div>
-                    <div>
-                        <label>Attributi</label>
+                        <label></label>
                         <table id="er-attributestable">
                             <thead>
                                 <tr>
                                     <th>Nome</th>
                                     <th>Chiave Primaria</th>
                                     <th>Tipo</th>
-                                    <th>Grandezza</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><input type="text"></td>
-                                    <td><input type="checkbox"></td>
-                                    <td>Stringa variabile</td>
-                                    <td>200</td>
+                                    <td colspan="3"><img src="img/plus.svg" class="filter-white" alt="add row">Aggiungi</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm" disabled>Salva</button>
+                    <button class="confirm">Salva</button>
                     <button class="cancel">Annulla</button>
                 </div>
             </div>

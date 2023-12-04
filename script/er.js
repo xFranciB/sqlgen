@@ -21,11 +21,87 @@ const herons = (x1, y1, x2, y2, x3, y3) => {
 
 const clamp = (val, min, max) => Math.min(max, Math.max(min, val))
 
+class EREditItem {
+    #modal
+    #tbody
+    #data = {}
+    #lastId = -1
+    static rowTemplate = document.getElementById('ertype-row-template').content
+
+    constructor(edititem_modal_element) {
+        this.#modal = new Modal(edititem_modal_element)
+        this.#tbody = this.#modal.element.querySelector('tbody')
+        this.#modal.element.querySelector('tr:last-child > td').onclick = () => this.#addRow()
+    }
+
+    async prompt(title) {
+        this.#modal.element.querySelector('.modal-title').textContent = title
+        this.#modal.element.querySelector('#erentity-name').value = ''
+
+        while (this.#tbody.children.length > 1) {
+            this.#tbody.children[0].remove()
+        }
+
+        for (let i = 0; i < 5; i++) {
+            this.#addRow()
+        }
+
+        this.#modal.open()
+
+        return new Promise((res, rej) => {
+            this.#modal.setCancel(this.#modal.element.querySelector('button.cancel'), rej)
+            this.#modal.setConfirm(this.#modal.element.querySelector('button.confirm'), () => {
+                const name = this.#modal.element.querySelector('#erentity-name').value
+                if (name === '') {
+                    alert('Inserisci un nome')
+                    return
+                }
+
+                const resp = []
+
+                for (let i = 0; i < this.#tbody.children.length - 1; i++) {
+                    const rowname = this.#tbody.children[i].querySelector('input[type="text"]').value
+                    if (rowname === '') continue
+
+                    if (!this.#data.hasOwnProperty(this.#tbody.children[i].getAttribute('rowid'))) {
+                        alert('Inserisci un tipo')
+                        return
+                    }
+
+                    resp.push({name: rowname, pk: this.#tbody.children[i].querySelector('input[type="checkbox"]').checked, type: this.#data[this.#tbody.children[i].getAttribute('rowid')]})
+                }
+
+                // Check if name is already used somehow
+                this.#modal.close()
+                res({name: name, attributes: resp})
+            }, false)
+        })
+    }
+
+    #addRow() {
+        const newrow = EREditItem.rowTemplate.cloneNode(true).firstElementChild
+        newrow.setAttribute('rowid', ++this.#lastId)
+        newrow.querySelector('img').onclick = async () => {
+            const res = await this.#getType()
+            newrow.querySelector('span').textContent = formatType(res.type)
+            this.#data[parseInt(newrow.getAttribute('rowid'))] = res
+        }
+
+        this.#tbody.insertBefore(newrow, this.#tbody.lastElementChild)
+    }
+
+    async #getType() {
+        return await getType()
+    }
+
+}
+
 class ERDiagram {
     static directions = {top: 0, right: 1, bottom: 2, left: 3}
+    #editable
     #createassoc_modal = null
     #createassoc_erd
-    #createentity_modal = null
+    #edititem_prompt = null
     #createassoc_erd_items = {}
     #isDragging = false
     #draggingEntity = null
@@ -59,7 +135,12 @@ class ERDiagram {
         attribute: {
             length: 20,
             radius: 5,
-            textGap: 5
+            textGap: 5,
+
+            // The offsets used when
+            // creating attributes
+            baseOffset: 10,
+            offset: 50
         },
         link: {
             textGap: 5
@@ -84,20 +165,21 @@ class ERDiagram {
 
     constructor(
         canvas,
+        editable = false,
         createassoc_modal_element = null,
         createentity_button = null,
-        createentity_modal_element = null,
-        createassocation_button = null,
-        createassocation_modal_element = null
+        createrelation_button = null,
+        edititem_modal_element = null
     ) {
         this.#canvas = canvas
         this.#canvasSizes = {w: canvas.width, h: canvas.height}
         this.#ctx = this.#createContext()
+        this.#editable = editable
 
         // For diagrams that do not require editing
-        // If `createassoc_modal_element` is not null the other
-        // parameters should not be as well.
-        if (createassoc_modal_element === null) return
+        // If this is set to false, all other elements and buttons
+        // should be set to null for good practice.
+        if (!this.#editable) return
 
         // Create Association modal
         this.#createassoc_modal = new Modal(createassoc_modal_element)
@@ -105,10 +187,9 @@ class ERDiagram {
             this.redraw()
         }).bind(this))
 
-        console.log(this.#createassoc_modal.element.querySelector('#er-createassoc'))
         this.#createassoc_erd = new ERDiagram(this.#createassoc_modal.element.querySelector('#er-createassoc'))
         this.#createassoc_erd_items.entity = this.#createassoc_erd.createEntity(50, 25)
-        this.#createassoc_erd_items.relation = this.#createassoc_erd.createassocation(300, 25)
+        this.#createassoc_erd_items.relation = this.#createassoc_erd.createRelation(300, 25)
         this.#createassoc_erd_items.link = this.#createassoc_erd.createLink(
             this.#createassoc_erd_items.entity,
             this.#createassoc_erd_items.relation
@@ -128,8 +209,39 @@ class ERDiagram {
         }
 
         // Create Entity modal
-        this.#createentity_modal = new Modal(createentity_modal_element)
-        createentity_button.onclick = () => this.#createentity_modal.open()
+        this.#edititem_prompt = new EREditItem(edititem_modal_element)
+        createentity_button.onclick = async () => {
+            const newdata = await this.#edititem_prompt.prompt("Crea Entità")
+            const entityid = this.createEntity(75, 75, newdata.name)
+
+            for (let i = 0; i < newdata.attributes.length; i++) {
+                this.createEntityAttribute(
+                    entityid,
+                    ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
+                    newdata.attributes[i].name,
+                    newdata.attributes[i].pk
+                )
+            }
+
+            this.redraw()
+        }
+
+        // Create Relation modal
+        createrelation_button.onclick = async () => {
+            const newdata = await this.#edititem_prompt.prompt("Crea Relazione")
+            const relation = this.createRelation(75, 75, newdata.name)
+
+            for (let i = 0; i < newdata.attributes.length; i++) {
+                this.createRelationAttribute(
+                    relation,
+                    ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
+                    newdata.attributes[i].name,
+                    newdata.attributes[i].pk
+                )
+            }
+
+            this.redraw()
+        }
     }
 
     #createContext() {
@@ -466,7 +578,7 @@ class ERDiagram {
         return this.#lastentity
     }
 
-    createassocation(x, y, text = '') {
+    createRelation(x, y, text = '') {
         this.#items[++this.#lastentity] = {
             type: 'relation',
             text: text,
@@ -495,7 +607,7 @@ class ERDiagram {
         return this.#lastentity
     }
 
-    createassocationAttribute(relationid, offset, text = '', primarykey = false) {
+    createRelationAttribute(relationid, offset, text = '', primarykey = false) {
         this.#items[++this.#lastentity] = {
             type: 'relation-attr',
             text: text,
@@ -641,12 +753,12 @@ class ERDiagram {
             const radius = ERDiagram.#shapeSizes.relation.radius
             this.#ctx.fillStyle = 'slategray'
             this.#ctx.beginPath()
-            
+
             for (let dot of Object.values(boundscache.dots)) {
                 this.#ctx.moveTo(dot.x + radius, dot.y)
                 this.#ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2)
             }
-            
+
             this.#ctx.fill()
             this.#ctx.fillStyle = '#000'
         }
@@ -782,6 +894,7 @@ class ERDiagram {
             break
 
         case 'relation-attr':
+            // TODO: Not implemented
             break
 
         case 'link':
@@ -1039,10 +1152,11 @@ class ERDiagram {
                         this.redraw()
                     }).bind(this))
 
+                    return
                 }
-            } else {
-                this.redraw()
             }
+
+            this.redraw()
         }
     }
 
@@ -1057,7 +1171,7 @@ class ERDiagram {
     }
 
     toggleDragging(status) {
-        if (this.#createassoc_modal === null) return
+        if (!this.#editable) return
 
         if (status) {
             document.addEventListener('mousedown', e => this.#handleMouseDown(e))
@@ -1075,27 +1189,21 @@ class ERDiagram {
 
 const erd = new ERDiagram(
     document.getElementById('er-diagram'),
+    true,
     document.getElementById('modal-createassoc'),
     document.getElementById('er-createentity'),
-    document.getElementById('modal-createentity')
+    document.getElementById('er-createrelation'),
+    document.getElementById('modal-edititem')
 )
 
-const entity1 = erd.createEntity(100, 60, 'Utente')
-const relation = erd.createassocation(350, 100, 'Possiede')
-const entity2 = erd.createEntity(600, 100, 'Animale')
-const entity3 = erd.createEntity(300, 300, 'Medico')
-erd.createEntityAttribute(entity1, 10, 'ID', true)
-erd.createassocationAttribute(relation, 50, 'TEST')
-erd.createLink(entity1, relation, '(0, N)')
-erd.createLink(entity2, relation, '(0, N)')
+// const entity1 = erd.createEntity(100, 60, 'Utente')
+// const relation = erd.createRelation(350, 100, 'Possiede')
+// const entity2 = erd.createEntity(600, 100, 'Animale')
+// const entity3 = erd.createEntity(300, 300, 'Medico')
+// erd.createEntityAttribute(entity1, 10, 'ID', true)
+// erd.createRelationAttribute(relation, 50, 'TEST')
+// erd.createLink(entity1, relation, '(0, N)')
+// erd.createLink(entity2, relation, '(0, N)')
 
 erd.toggleDragging(true)
 erd.redraw()
-
-// TEMP
-// const createassoc_canvas = document.getElementById('er-createassoc')
-// const createassoc_erd = new ERDiagram(createassoc_canvas)
-// const createassoc_entity = createassoc_erd.createEntity(50, 25, 'Utente')
-// const createassoc_relation = createassoc_erd.createassocation(300, 25, 'Possiede')
-// createassoc_erd.createLink(createassoc_entity, createassoc_relation, '(0, 1)')
-// createassoc_erd.redraw()

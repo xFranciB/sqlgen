@@ -505,3 +505,14 @@ main {
 #er-attributestable td:not(:first-child) {
     text-align: center;
 }
+
+#er-attributestable img {
+    width: 20px;
+    vertical-align: sub;
+    cursor: pointer;
+}
+
+#er-attributestable tr:last-child {
+    cursor: pointer;
+    user-select: none;
+}
