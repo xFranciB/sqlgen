@@ -8,10 +8,10 @@
         <link rel="icon" href="img/favicon.png">
         <script src="script/modal.js" defer></script>
         <script src="script/table.js" defer></script>
-        <script src="script/main.js" defer></script>
         <script src="script/types.js" defer></script>
         <script src="script/sql.js" defer></script>
         <script src="script/er.js" defer></script>
+        <script src="script/main.js" defer></script>
     </head>
     <body>
         <template id="table-entry-template">
@@ -95,7 +95,7 @@
             </div>
         </div>
 
-        <div class="modal" id="modal-er">
+        <div class="modal hidden" id="modal-er">
             <div class="modal-content">
                 <div class="modal-title">
                     Diagramma ER
@@ -104,11 +104,12 @@
                     <div id="er-controls">
                         <button id="er-createentity"><img src="img/plus.svg">Entità</button>
                         <button id="er-createrelation"><img src="img/plus.svg">Relazione</button>
+                        <button id="er-exportimage"><img src="img/export.svg">Esporta immagine</button>
                     </div>
                     <canvas id="er-diagram" width="800" height="450"></canvas>
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm">Elimina</button>
+                    <button class="confirm">Crea</button>
                     <button class="cancel">Annulla</button>
                 </div>
             </div>
@@ -304,6 +305,10 @@
             </button>
             <span class="nav-separator">Tabelle</span>
             <div id="table-container"></div>
+            <button id="btn-erd">
+                <img src="img/erd.svg" alt="open er diagram button">
+                Diagramma ER
+            </button>
             <button id="export-button">
                 <img src="img/export.svg" alt="export tables button">
                 Esporta SQL

@@ -159,7 +159,7 @@ nav > button {
     width: 100%;
 }
 
-#export-button {
+#btn-erd {
     margin-top: auto;
 }
 
@@ -471,6 +471,10 @@ main {
 
 #er-controls > button:hover {
     background-color: var(--mainbar-hover);
+}
+
+#er-exportimage {
+    margin-left: auto;
 }
 
 #modal-createentity .modal-body > div > * {

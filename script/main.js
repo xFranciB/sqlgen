@@ -208,3 +208,25 @@ deleteTableModal.setConfirm(deleteTableEl.querySelector('.confirm'), () => {
 deleteStructure.onclick = () => {
     deleteTableModal.open()
 }
+
+const btnErd = document.getElementById('btn-erd')
+const erdModalEl = document.getElementById('modal-er')
+const erModal = new Modal(erdModalEl)
+const erd = new ERDiagram(
+    document.getElementById('er-diagram'),
+    true,
+    document.getElementById('modal-createassoc'),
+    document.getElementById('er-createentity'),
+    document.getElementById('er-createrelation'),
+    document.getElementById('modal-edititem'),
+    document.getElementById('er-exportimage')
+)
+
+erModal.setCancel(erdModalEl.querySelector('.cancel'))
+erModal.setConfirm(erdModalEl.querySelector('.confirm'), () => {
+    alert('Ok')
+}, false)
+
+erd.toggleDragging(true)
+erd.redraw()
+btnErd.onclick = () => erModal.open()

@@ -169,7 +169,8 @@ class ERDiagram {
         createassoc_modal_element = null,
         createentity_button = null,
         createrelation_button = null,
-        edititem_modal_element = null
+        edititem_modal_element = null,
+        export_image_button = null
     ) {
         this.#canvas = canvas
         this.#canvasSizes = {w: canvas.width, h: canvas.height}
@@ -241,6 +242,14 @@ class ERDiagram {
             }
 
             this.redraw()
+        }
+
+        // Export image button
+        const downloadElement = document.createElement('a')
+        downloadElement.download = 'diagrammaer.png'
+        export_image_button.onclick = () => {
+            downloadElement.href = this.#canvas.toDataURL()
+            downloadElement.click()
         }
     }
 
@@ -1187,15 +1196,6 @@ class ERDiagram {
     }
 }
 
-const erd = new ERDiagram(
-    document.getElementById('er-diagram'),
-    true,
-    document.getElementById('modal-createassoc'),
-    document.getElementById('er-createentity'),
-    document.getElementById('er-createrelation'),
-    document.getElementById('modal-edititem')
-)
-
 // const entity1 = erd.createEntity(100, 60, 'Utente')
 // const relation = erd.createRelation(350, 100, 'Possiede')
 // const entity2 = erd.createEntity(600, 100, 'Animale')
@@ -1205,5 +1205,3 @@ const erd = new ERDiagram(
 // erd.createLink(entity1, relation, '(0, N)')
 // erd.createLink(entity2, relation, '(0, N)')
 
-erd.toggleDragging(true)
-erd.redraw()
