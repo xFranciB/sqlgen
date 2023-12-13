@@ -12,6 +12,7 @@
         <script src="script/sql.js" defer></script>
         <script src="script/er.js" defer></script>
         <script src="script/main.js" defer></script>
+        <script src="script/foreignkey.js" defer></script>
     </head>
     <body>
         <template id="table-entry-template">
@@ -104,7 +105,7 @@
                     <div id="er-controls">
                         <button id="er-createentity"><img src="img/plus.svg">Entità</button>
                         <button id="er-createrelation"><img src="img/plus.svg">Relazione</button>
-                        <button id="er-exportimage"><img src="img/export.svg">Esporta immagine</button>
+                        <button id="er-exportimage"><img src="img/image.svg">Esporta immagine</button>
                     </div>
                     <canvas id="er-diagram" width="800" height="450"></canvas>
                 </div>
@@ -170,6 +171,95 @@
                         <div>
                             <input type="radio" name="cardinality" value="1N">
                             <label>(1, N)</label>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm" disabled>Salva</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-foreign">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Opzioni Chiave Esterna
+                </div>
+                <div class="modal-body">
+                    <div id="foreign-diagram">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th id="foreign-childtable"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="foreign-childfield"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div id="foreign-arrow"></div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <select id="foreign-parenttable">
+                                            <option>padrone</option>
+                                        </select>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <select id="foreign-parentfield">
+                                            <option>ID</option>
+                                            <option>nome</option>
+                                            <option>cognome</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <span>All'aggiornamento del record genitore:</span>
+                    <fieldset>
+                        <div>
+                            <input type="radio" name="foreign-update" value="noaction">
+                            <label>Niente</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-update" value="cascade">
+                            <label>Aggiorna record figlio</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-update" value="setnull">
+                            <label>Imposta NULL</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-update" value="setdefault">
+                            <label>Importa valore di default</label>
+                        </div>
+                    </fieldset>
+                    <span>Alla cancellazione del record genitore:</span>
+                    <fieldset>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="noaction">
+                            <label>Niente</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="cascade">
+                            <label>Aggiorna record figlio</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="setnull">
+                            <label>Imposta NULL</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="setdefault">
+                            <label>Importa valore di default</label>
                         </div>
                     </fieldset>
                 </div>

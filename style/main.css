@@ -520,3 +520,52 @@ main {
     cursor: pointer;
     user-select: none;
 }
+
+#foreign-diagram {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin: 15px 0;
+}
+
+#foreign-diagram table {
+    border-collapse: collapse;
+    text-align: center;
+}
+
+#foreign-diagram table td,
+#foreign-diagram table th {
+    border: 1px solid black;
+    padding: 5px 10px;
+}
+
+#foreign-diagram th > select {
+    font-weight: 700;
+}
+
+#foreign-diagram select {
+    text-align: center;
+}
+
+#foreign-arrow {
+    width: 75px;
+    height: 3px;
+    position: relative;
+    border-radius: 100px;
+    background-color: black;
+}
+
+#foreign-arrow::after {
+    content: '';
+    display: block;
+    position: absolute;
+    height: 8px;
+    width: 8px;
+    right: 0px;
+    top: 50%;
+    border-radius: 2px;
+    border-right: 3px solid black;
+    border-top: 3px solid black;
+    transform: translateY(-50%) rotate(45deg);
+}
+
