@@ -7,6 +7,10 @@ class FKPrompt {
     #parentfield
     #data = null
 
+    #childtablename = null
+    #parenttablename = null
+    #childfieldid = null
+
     constructor(foreignkey_modal) {
         this.#modal = foreignkey_modal
         this.#element = this.#modal.element
@@ -16,22 +20,26 @@ class FKPrompt {
         this.#parentfield = this.#element.querySelector('#foreign-parentfield')
 
         this.#parenttable.onchange = () => {
+            this.#parenttablename = this.#parenttable.value
             this.#emptySelect(this.#parentfield)
-            const tablename = this.#parenttable.value
 
-            for (let field of data.tables[tablename].fields) {
+            for (let field of data.tables[this.#parenttablename].fields) {
                 this.#parentfield.appendChild(document.createElement('option'))
                 this.#parentfield.lastElementChild.textContent = field.name
             }
-
-            // Check if types match
-            // FKPrompt.#arraysEqual
         }
+
+        modalForeign.setCancel(modalForeign.element.querySelector('.cancel'))
     }
 
     // Maybe make this global in some helper class?
     static #arraysEqual(arr1, arr2) {
-        // NOT IMPLEMENTED
+        if (arr1.length !== arr2.length) return false
+
+        for (let x in arr1)
+            if (arr1[x] !== arr2[x]) return false
+
+        return true
     }
 
     #emptySelect(el) {
@@ -45,6 +53,8 @@ class FKPrompt {
 
     prompt(data, table_name, fieldid) {
         this.#data = data
+        this.#childfieldid = fieldid
+        this.#childtablename = table_name
         this.#childtable.textContent = table_name
         this.#childfield.textContent = data.tables[table_name].fields[fieldid].name
 
@@ -62,14 +72,23 @@ class FKPrompt {
         this.#modal.open()
 
         return new Promise((res, rej) => {
-            res('')
+            modalForeign.setConfirm(modalForeign.element.querySelector('.confirm'), () => {
+                if (this.#parenttablename === null) return
+
+
+                modalForeign.close()
+                res()
+            }, false)
         })
     }
 }
 
-const fkprompt = new FKPrompt(new Modal(document.getElementById('modal-foreign')))
+const modalForeign = new Modal(document.getElementById('modal-foreign'))
+
+const fkprompt = new FKPrompt(modalForeign)
+
 fkprompt.prompt(
     data,
-    'animale',
+    'animali',
     1
 ).then(console.log)
