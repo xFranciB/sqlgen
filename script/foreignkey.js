@@ -27,6 +27,8 @@ class FKPrompt {
                 this.#parentfield.appendChild(document.createElement('option'))
                 this.#parentfield.lastElementChild.textContent = field.name
             }
+
+            this.#parentfield.removeAttribute('disabled')
         }
 
         modalForeign.setCancel(modalForeign.element.querySelector('.cancel'))
@@ -57,6 +59,7 @@ class FKPrompt {
         this.#childtablename = table_name
         this.#childtable.textContent = table_name
         this.#childfield.textContent = data.tables[table_name].fields[fieldid].name
+        this.#parentfield.setAttribute('disabled', '')
 
         this.#emptySelect(this.#parenttable)
 
@@ -73,11 +76,23 @@ class FKPrompt {
 
         return new Promise((res, rej) => {
             modalForeign.setConfirm(modalForeign.element.querySelector('.confirm'), () => {
-                if (this.#parenttablename === null) return
+                if (this.#parenttablename === null) {
+                    alert('Inserisci una tabella')
+                    return
+                }
 
+                if (this.#parentfield.value === '') {
+                    alert('Inserisci un campo')
+                    return
+                }
 
                 modalForeign.close()
-                res()
+                res({
+                    table: this.#parenttablename,
+                    field: this.#parentfield.value,
+                    onupdate: this.#element.querySelector('input[name="foreign-update"]:checked').value,
+                    ondelete: this.#element.querySelector('input[name="foreign-delete"]:checked').value
+                })
             }, false)
         })
     }
