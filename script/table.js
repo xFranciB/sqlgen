@@ -5,6 +5,9 @@ const saveButton = document.getElementById('save-structure')
 const editButton = document.getElementById('edit-structure')
 const discardStructure = document.getElementById('discard-structure')
 const exportStructure = document.getElementById('export-structure')
+const modalForeign = new Modal(document.getElementById('modal-foreign'))
+const fkprompt = new FKPrompt(modalForeign)
+let isEditing = false
 
 const setType = (row, res) => {
     if (res === null || res.type === null) {
@@ -33,14 +36,14 @@ const editType = async (row) => {
 }
 
 const togglePrimaryKey = el => {
+    if (!isEditing) return
+
     if (el.getAttribute('disabled') === '') {
         el.removeAttribute('disabled')
     } else {
         el.setAttribute('disabled', '')
     }
 }
-
-const openFKModal = () => {}
 
 const editOnRow = row => {
     if (row.nextElementSibling === null) return
@@ -74,6 +77,7 @@ const editOnRow = row => {
 }
 
 const editOn = () => {
+    isEditing = true
     saveButton.classList.remove('hidden')
     discardStructure.classList.remove('hidden')
     editButton.classList.add('hidden')
@@ -93,7 +97,53 @@ const addEmptyRow = () => {
     newel.querySelector('.primarykey').onclick = e => {
         togglePrimaryKey(e.target)
     }
-    // newel.querySelector('.foreignkey').onclick = openFKModal
+
+    // TODO: Handle editing and deleting
+    // TODO: Handle saving to `data` array and to LocalStorage
+    // TODO: Handle SQL exporting
+    newel.querySelector('.foreignkey').onclick = e => {
+        // New constraint
+        if (e.target.getAttribute('table') === null) {
+            fkprompt.promptNew(
+                data,
+                currentTable,
+                newel.querySelector('.entry-name').textContent
+            ).then(res => {
+                /**
+                 * res = {
+                 *  table: "padrone", 
+                 *  field: "ID",
+                 *  onupdate: "cascade",
+                 *  ondelete: "setnull"
+                 * }
+                 */
+    
+                e.target.setAttribute('table', res.table)
+                e.target.setAttribute('field', res.field)
+                e.target.setAttribute('onupdate', res.onupdate)
+                e.target.setAttribute('ondelete', res.ondelete)
+                e.target.removeAttribute('disabled')
+            }).catch(() => {})
+
+            return
+        }
+
+        // Edit constraint
+        fkprompt.promptEdit(
+            data,
+            currentTable,
+            newel.querySelector('.entry-name').textContent,
+            {
+                table: e.target.getAttribute('table'),
+                field: e.target.getAttribute('field'),
+                onupdate: e.target.getAttribute('onupdate'),
+                ondelete: e.target.getAttribute('ondelete')
+            }
+        ).then(res => {
+            //
+        }).catch(() => {})
+    }
+
     newel.querySelector('.entry-edit-type').onclick = () => {
         editType(newel)
     }
@@ -133,7 +183,7 @@ const addRow = (rowdata) => {
 }
 
 const editOff = () => {
-    console.log('a')
+    isEditing = false
     saveButton.classList.add('hidden')
     discardStructure.classList.add('hidden')
     editButton.classList.remove('hidden')

@@ -70,8 +70,13 @@ button.confirm {
     background-color: var(--accent);
 }
 
-button.cancel {
+button.cancel,
+button.delete {
     background-color: var(--red);
+}
+
+button.delete {
+    margin-right: auto;
 }
 
 button.confirm:hover {

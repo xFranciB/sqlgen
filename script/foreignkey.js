@@ -5,11 +5,11 @@ class FKPrompt {
     #childfield
     #parenttable
     #parentfield
+    #deletebtn
     #data = null
 
     #childtablename = null
     #parenttablename = null
-    #childfieldid = null
 
     constructor(foreignkey_modal) {
         this.#modal = foreignkey_modal
@@ -18,30 +18,49 @@ class FKPrompt {
         this.#childfield = this.#element.querySelector('#foreign-childfield')
         this.#parenttable = this.#element.querySelector('#foreign-parenttable')
         this.#parentfield = this.#element.querySelector('#foreign-parentfield')
+        this.#deletebtn = this.#element.querySelector('.delete')
 
-        this.#parenttable.onchange = () => {
-            this.#parenttablename = this.#parenttable.value
-            this.#emptySelect(this.#parentfield)
-
-            for (let field of data.tables[this.#parenttablename].fields) {
-                this.#parentfield.appendChild(document.createElement('option'))
-                this.#parentfield.lastElementChild.textContent = field.name
-            }
-
-            this.#parentfield.removeAttribute('disabled')
-        }
+        this.#parenttable.onchange = () => this.#updateParentFieldsFromParentTable(this.#parenttable.value)
 
         modalForeign.setCancel(modalForeign.element.querySelector('.cancel'))
     }
 
-    // Maybe make this global in some helper class?
-    static #arraysEqual(arr1, arr2) {
-        if (arr1.length !== arr2.length) return false
+    #updateParentFieldsFromParentTable(parenttablename) {
+        this.#parenttablename = parenttablename
+        this.#emptySelect(this.#parentfield)
 
-        for (let x in arr1)
-            if (arr1[x] !== arr2[x]) return false
+        for (let field of data.tables[this.#parenttablename].fields) {
+            this.#parentfield.appendChild(document.createElement('option'))
+            this.#parentfield.lastElementChild.textContent = field.name
+        }
 
-        return true
+        this.#parentfield.removeAttribute('disabled')
+    }
+
+    #setParentTable(parenttablename) {
+        this.#parenttablename = parenttablename
+        
+        const tablechildren = Array.from(this.#parenttable.children)
+        this.#parenttable.selectedIndex = tablechildren.indexOf(
+            tablechildren.find(el => el.textContent == parenttablename)
+        )
+
+        this.#updateParentFieldsFromParentTable(this.#parenttablename)
+    }
+
+    #setParentField(parentfieldname) {
+        const fieldchildren = Array.from(this.#parentfield.children)
+        this.#parentfield.selectedIndex = fieldchildren.indexOf(
+            fieldchildren.find(el => el.textContent == parentfieldname)
+        )
+    }
+
+    #setOnUpdate(constraint) {
+        this.#element.querySelector(`input[name="foreign-update"][value="${constraint}"]`).checked = true
+    }
+
+    #setOnDelete(constraint) {
+        this.#element.querySelector(`input[name="foreign-delete"][value="${constraint}"]`).checked = true
     }
 
     #emptySelect(el) {
@@ -53,17 +72,16 @@ class FKPrompt {
         el.lastElementChild.classList.add('hidden')
     }
 
-    prompt(data, table_name, fieldid) {
+    #prepare(data, table_name, field_name) {
         this.#data = data
-        this.#childfieldid = fieldid
         this.#childtablename = table_name
         this.#childtable.textContent = table_name
-        this.#childfield.textContent = data.tables[table_name].fields[fieldid].name
-        this.#parentfield.setAttribute('disabled', '')
+        this.#childfield.textContent = field_name
 
+        this.#parentfield.setAttribute('disabled', '')
         this.#emptySelect(this.#parenttable)
 
-        for (let table in data.tables) {
+        for (let table in this.#data.tables) {
             if (table == table_name) continue
             this.#parenttable.appendChild(document.createElement('option'))
             this.#parenttable.lastElementChild.textContent = table
@@ -71,18 +89,29 @@ class FKPrompt {
 
         this.#emptySelect(this.#parentfield)
         this.#element.querySelectorAll('input[value="noaction"]').forEach(el => el.click())
+    }
 
-        this.#modal.open()
-
+    #prompt() {
         return new Promise((res, rej) => {
+            const tablesAmount = Object.keys(this.#data.tables).length
+            if (tablesAmount == 0 || (tablesAmount == 1 && this.#data.tables.hasOwnProperty(this.#childtablename))) {
+                alert('Crea un\'altra tabella prima di impostare le relazioni esterne!')
+                rej()
+                return
+            }
+
+            this.#modal.open()
+        
             modalForeign.setConfirm(modalForeign.element.querySelector('.confirm'), () => {
                 if (this.#parenttablename === null) {
                     alert('Inserisci una tabella')
+                    rej()
                     return
                 }
 
                 if (this.#parentfield.value === '') {
                     alert('Inserisci un campo')
+                    rej()
                     return
                 }
 
@@ -96,14 +125,21 @@ class FKPrompt {
             }, false)
         })
     }
+
+    promptNew(data, table_name, field_name) {
+        this.#prepare(data, table_name, field_name)
+        this.#deletebtn.setAttribute('disabled', '')
+        return this.#prompt()
+    }
+
+    promptEdit(data, table_name, field_name, status) {
+        this.#prepare(data, table_name, field_name)
+        this.#setParentTable(status.table)
+        this.#setParentField(status.field)
+        this.#setOnUpdate(status.onupdate)
+        this.#setOnDelete(status.ondelete)
+        this.#deletebtn.removeAttribute('delete')
+
+        return this.#prompt()
+    }
 }
-
-const modalForeign = new Modal(document.getElementById('modal-foreign'))
-
-const fkprompt = new FKPrompt(modalForeign)
-
-fkprompt.prompt(
-    data,
-    'animali',
-    1
-).then(console.log)

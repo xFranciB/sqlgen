@@ -119,6 +119,7 @@ const addTable = (name, onlyel = false) => {
     newel.querySelector('span').textContent = name
     newel.setAttribute('name', name)
     newel.onclick = () => {
+        if (isEditing) return
         main.classList.remove('hidden')
         currentTable = name
         tableContainer.querySelector('.active')?.classList.remove('active')

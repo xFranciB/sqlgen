@@ -7,12 +7,12 @@
         <link rel="stylesheet" href="style/main.css">
         <link rel="icon" href="img/favicon.png">
         <script src="script/modal.js" defer></script>
-        <script src="script/table.js" defer></script>
         <script src="script/types.js" defer></script>
         <script src="script/sql.js" defer></script>
         <script src="script/er.js" defer></script>
-        <script src="script/main.js" defer></script>
         <script src="script/foreignkey.js" defer></script>
+        <script src="script/table.js" defer></script>
+        <script src="script/main.js" defer></script>
     </head>
     <body>
         <template id="table-entry-template">
@@ -23,8 +23,7 @@
         </template>
         <template id="table-row-template">
             <tr>
-                <!-- <img class="foreignkey hidden" src="img/foreign.svg"> -->
-                <td><img class="primarykey hidden" src="img/key.svg"></td>
+                <td><img class="foreignkey hidden" src="img/foreign.svg"><img class="primarykey hidden" src="img/key.svg"></td>
                 <td><input type="text" class="entry-name-input hidden"><span class="entry-name"></span></td>
                 <td>
                     <img src="img/edit.svg" class="entry-edit-type filter-accent hidden"><span class="entry-type"></span>
@@ -260,8 +259,9 @@
                     </fieldset>
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm" >Salva</button>
+                    <button class="confirm">Salva</button>
                     <button class="cancel">Annulla</button>
+                    <button class="delete">Elimina</button>
                 </div>
             </div>
         </div>
