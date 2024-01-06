@@ -93,10 +93,20 @@ class Constraint {
     static external(table, field, onupdate = '', ondelete = '') {
         const fields = {}
 
-        if (onupdate != '') fields.update = onupdate
-        if (ondelete != '') fields.delete = ondelete
+        if (onupdate != '') fields.onupdate = onupdate
+        if (ondelete != '') fields.ondelete = ondelete
         return {'FK': {table: table, field: field, ...fields}}
     }
+}
+
+const arrayEqual = (arr1, arr2) => {
+    if (arr1.length !== arr2.length) return false
+
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] != arr2[i]) return false
+    }
+
+    return true
 }
 
 const saveData = () => {

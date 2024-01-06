@@ -35,16 +35,6 @@ const editType = async (row) => {
     setType(row, res)
 }
 
-const togglePrimaryKey = el => {
-    if (!isEditing) return
-
-    if (el.getAttribute('disabled') === '') {
-        el.removeAttribute('disabled')
-    } else {
-        el.setAttribute('disabled', '')
-    }
-}
-
 const editOnRow = row => {
     if (row.nextElementSibling === null) return
     if (row.getAttribute('editing') == 'true') return
@@ -68,7 +58,7 @@ const editOnRow = row => {
         if (!tmp.classList.contains('hidden')) {
             tmp.previousElementSibling.checked = true
         }
-        
+
         tmp.previousElementSibling.classList.remove('hidden')
         tmp.classList.add('hidden')
     }
@@ -83,7 +73,7 @@ const editOn = () => {
     editButton.classList.add('hidden')
     exportStructure.classList.add('hidden')
     deleteStructure.classList.add('hidden')
-    
+
     addRowBtn.classList.remove('hidden')
     const rows = document.querySelectorAll('#table-structure tbody tr')
 
@@ -92,56 +82,76 @@ const editOn = () => {
     }
 }
 
+const togglePrimaryKey = el => {
+    if (!isEditing) return
+
+    if (el.getAttribute('disabled') === '') {
+        el.removeAttribute('disabled')
+    } else {
+        el.setAttribute('disabled', '')
+    }
+}
+
+const toggleForeignKey = (row, el) => {
+    if (!isEditing) return
+
+    // New constraint
+    if (el.getAttribute('table') === null) {
+        fkprompt.promptNew(
+            data,
+            currentTable,
+            row.querySelector('.entry-name-input').value
+        ).then(res => {
+            if (!res.status) return
+
+            el.setAttribute('table', res.table)
+            el.setAttribute('field', res.field)
+            el.setAttribute('onupdate', res.onupdate)
+            el.setAttribute('ondelete', res.ondelete)
+            el.removeAttribute('disabled')
+        }).catch(() => {})
+
+        return
+    }
+
+    // Edit constraint
+    fkprompt.promptEdit(
+        data,
+        currentTable,
+        row.querySelector('.entry-name-input').value,
+        {
+            table: el.getAttribute('table'),
+            field: el.getAttribute('field'),
+            onupdate: el.getAttribute('onupdate'),
+            ondelete: el.getAttribute('ondelete')
+        }
+    ).then(res => {
+        if (res.status) {
+            el.setAttribute('table', res.table)
+            el.setAttribute('field', res.field)
+            el.setAttribute('onupdate', res.onupdate)
+            el.setAttribute('ondelete', res.ondelete)
+        } else {
+            el.removeAttribute('table')
+            el.removeAttribute('field')
+            el.removeAttribute('onupdate')
+            el.removeAttribute('ondelete')
+            el.setAttribute('disabled', '')
+        }
+    }).catch(() => {})
+}
+
 const addEmptyRow = () => {
     const newel = tableRowTemplate.content.cloneNode(true).firstElementChild
     newel.querySelector('.primarykey').onclick = e => {
         togglePrimaryKey(e.target)
     }
 
-    // TODO: Handle editing and deleting
-    // TODO: Handle saving to `data` array and to LocalStorage
+    // TODO: Handle editing and deleting (done)
+    // TODO: Handle saving to `data` array and to LocalStorage (done)
     // TODO: Handle SQL exporting
     newel.querySelector('.foreignkey').onclick = e => {
-        // New constraint
-        if (e.target.getAttribute('table') === null) {
-            fkprompt.promptNew(
-                data,
-                currentTable,
-                newel.querySelector('.entry-name').textContent
-            ).then(res => {
-                /**
-                 * res = {
-                 *  table: "padrone", 
-                 *  field: "ID",
-                 *  onupdate: "cascade",
-                 *  ondelete: "setnull"
-                 * }
-                 */
-    
-                e.target.setAttribute('table', res.table)
-                e.target.setAttribute('field', res.field)
-                e.target.setAttribute('onupdate', res.onupdate)
-                e.target.setAttribute('ondelete', res.ondelete)
-                e.target.removeAttribute('disabled')
-            }).catch(() => {})
-
-            return
-        }
-
-        // Edit constraint
-        fkprompt.promptEdit(
-            data,
-            currentTable,
-            newel.querySelector('.entry-name').textContent,
-            {
-                table: e.target.getAttribute('table'),
-                field: e.target.getAttribute('field'),
-                onupdate: e.target.getAttribute('onupdate'),
-                ondelete: e.target.getAttribute('ondelete')
-            }
-        ).then(res => {
-            //
-        }).catch(() => {})
+        toggleForeignKey(newel, e.target)
     }
 
     newel.querySelector('.entry-edit-type').onclick = () => {
@@ -173,9 +183,17 @@ const addRow = (rowdata) => {
             row.querySelector('img.unique-constraint').classList.remove('hidden')
             break
 
-        case 'FK':
-            row.querySelector('img.foreignkey-constraint').classList.remove('hidden')
+        case 'FK': {
+            const foreignkey = row.querySelector('img.foreignkey')
+            foreignkey.setAttribute('table', rowdata.constraints.FK.table)
+            foreignkey.setAttribute('field', rowdata.constraints.FK.field)
+            foreignkey.setAttribute('onupdate', rowdata.constraints.FK.onupdate)
+            foreignkey.setAttribute('ondelete', rowdata.constraints.FK.ondelete)
+            foreignkey.removeAttribute('disabled')
+            foreignkey.classList.remove('hidden')
             break
+        }
+
         }
     }
 
@@ -243,6 +261,8 @@ saveButton.onclick = () => {
 
         const field = {}
         const primarykey = row.querySelector('img.primarykey[disabled]') === null
+        const foreignkey = row.querySelector('img.foreignkey[disabled]') === null
+        const foreignkeyel = row.querySelector('img.foreignkey')
 
         const entryNameInput = row.querySelector('.entry-name-input')
         field['name'] = entryNameInput.value
@@ -251,6 +271,12 @@ saveButton.onclick = () => {
         field.constraints = {}
 
         if (primarykey) field.constraints = {...field.constraints, ...Constraint.primarykey()}
+        if (foreignkey) field.constraints = {...field.constraints, ...Constraint.external(
+            foreignkeyel.getAttribute('table'),
+            foreignkeyel.getAttribute('field'),
+            foreignkeyel.getAttribute('onupdate'),
+            foreignkeyel.getAttribute('ondelete'),
+        )}
 
         for (let check of row.querySelectorAll('input[type="checkbox"]')) {
             if (check.checked && check.getAttribute('disabled') !== '') {
@@ -266,7 +292,8 @@ saveButton.onclick = () => {
         '- Può esserci soltanto un campo auto incrementale',
         '- Due o più campi hanno lo stesso nome',
         '- Almeno un campo non ha un nome',
-        '- Almeno un campo non ha un tipo'
+        '- Almeno un campo non ha un tipo',
+        '- Il tipo del campo figlio deve essere lo stesso del campo padre'
     ]
 
     const errors = {}
@@ -286,6 +313,21 @@ saveButton.onclick = () => {
 
         if (field.type == null) {
             errors[4] = true
+
+        // 'else if' is used because this breaks if `field.type` is null
+        } else if (field.constraints.hasOwnProperty('FK')) {
+            for (let pfield of data.tables[field.constraints.FK.table].fields) {
+                if (pfield.name === field.constraints.FK.field) {
+                    if (
+                        field.type.type !== pfield.type.type ||
+                        !arrayEqual(field.type.sizes, pfield.type. sizes)
+                    ) {
+                        errors[5] = true
+                    }
+
+                    break
+                }
+            }
         }
 
         fieldnames.push(field.name)

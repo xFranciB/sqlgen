@@ -22,7 +22,7 @@ class FKPrompt {
 
         this.#parenttable.onchange = () => this.#updateParentFieldsFromParentTable(this.#parenttable.value)
 
-        modalForeign.setCancel(modalForeign.element.querySelector('.cancel'))
+        this.#modal.setCancel(this.#modal.element.querySelector('.cancel'))
     }
 
     #updateParentFieldsFromParentTable(parenttablename) {
@@ -39,7 +39,7 @@ class FKPrompt {
 
     #setParentTable(parenttablename) {
         this.#parenttablename = parenttablename
-        
+
         const tablechildren = Array.from(this.#parenttable.children)
         this.#parenttable.selectedIndex = tablechildren.indexOf(
             tablechildren.find(el => el.textContent == parenttablename)
@@ -101,8 +101,8 @@ class FKPrompt {
             }
 
             this.#modal.open()
-        
-            modalForeign.setConfirm(modalForeign.element.querySelector('.confirm'), () => {
+
+            this.#modal.setConfirm(this.#modal.element.querySelector('.confirm'), () => {
                 if (this.#parenttablename === null) {
                     alert('Inserisci una tabella')
                     rej()
@@ -115,20 +115,29 @@ class FKPrompt {
                     return
                 }
 
-                modalForeign.close()
+                this.#modal.close()
                 res({
+                    status: true,
                     table: this.#parenttablename,
                     field: this.#parentfield.value,
                     onupdate: this.#element.querySelector('input[name="foreign-update"]:checked').value,
                     ondelete: this.#element.querySelector('input[name="foreign-delete"]:checked').value
                 })
             }, false)
+
+            this.#deletebtn.onclick = () => {
+                this.#modal.close()
+
+                res({
+                    status: false
+                })
+            }
         })
     }
 
     promptNew(data, table_name, field_name) {
         this.#prepare(data, table_name, field_name)
-        this.#deletebtn.setAttribute('disabled', '')
+        this.#deletebtn.classList.add('hidden')
         return this.#prompt()
     }
 
@@ -138,7 +147,7 @@ class FKPrompt {
         this.#setParentField(status.field)
         this.#setOnUpdate(status.onupdate)
         this.#setOnDelete(status.ondelete)
-        this.#deletebtn.removeAttribute('delete')
+        this.#deletebtn.classList.remove('hidden')
 
         return this.#prompt()
     }
