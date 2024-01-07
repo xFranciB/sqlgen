@@ -220,6 +220,7 @@ class ERDiagram {
                     entityid,
                     ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
                     newdata.attributes[i].name,
+                    newdata.attributes[i].type,
                     newdata.attributes[i].pk
                 )
             }
@@ -237,6 +238,7 @@ class ERDiagram {
                     relation,
                     ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
                     newdata.attributes[i].name,
+                    newdata.attributes[i].type,
                     newdata.attributes[i].pk
                 )
             }
@@ -601,10 +603,11 @@ class ERDiagram {
         return this.#lastentity
     }
 
-    createEntityAttribute(entityid, offset, text = '', primarykey = false) {
+    createEntityAttribute(entityid, offset, text = '', type = {}, primarykey = false) {
         this.#items[++this.#lastentity] = {
             type: 'entity-attr',
             text: text,
+            fieldtype: type,
             primarykey: primarykey,
             pos: {
                 relatedto: entityid,
@@ -616,10 +619,11 @@ class ERDiagram {
         return this.#lastentity
     }
 
-    createRelationAttribute(relationid, offset, text = '', primarykey = false) {
+    createRelationAttribute(relationid, offset, text = '', type = {}, primarykey = false) {
         this.#items[++this.#lastentity] = {
             type: 'relation-attr',
             text: text,
+            fieldtype: type,
             primarykey: primarykey,
             pos: {
                 relatedto: relationid,
@@ -1103,17 +1107,24 @@ class ERDiagram {
             return
         }
 
-        this.#isDragging = true
-        this.#draggingEntity = erd.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
-        if (this.#draggingEntity === null) return
+        // Left click to drag
+        if (e.button == 0) {
+            this.#isDragging = true
+            this.#draggingEntity = erd.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
+            if (this.#draggingEntity === null) return
 
-        const entity = this.#items[this.#draggingEntity]
+            const entity = this.#items[this.#draggingEntity]
 
-        if (entity.type === 'entity' || entity.type === 'relation') {
-            this.#offsetcoords = {x: e.x - bdbox.x - entity.pos.x, y: e.y - bdbox.y - entity.pos.y}
-        } else {
-            const boundscache = this.#boundscache[this.#draggingEntity]
-            this.#offsetcoords = {x: e.x - bdbox.x - boundscache.bounds.x, y: e.y - bdbox.y - boundscache.bounds.y}
+            if (entity.type === 'entity' || entity.type === 'relation') {
+                this.#offsetcoords = {x: e.x - bdbox.x - entity.pos.x, y: e.y - bdbox.y - entity.pos.y}
+            } else {
+                const boundscache = this.#boundscache[this.#draggingEntity]
+                this.#offsetcoords = {x: e.x - bdbox.x - boundscache.bounds.x, y: e.y - bdbox.y - boundscache.bounds.y}
+            }
+
+        // Right click context menu
+        } else if (e.button == 2) {
+            // TODO
         }
     }
 
@@ -1194,14 +1205,158 @@ class ERDiagram {
 
         this.#draggingEnabled = status
     }
+
+    toDataArray() {
+        const getPrimaryKey = (entity) => {
+            for (let field of entity.fields) {
+                if (field.constraints && field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
+                    return field
+                }
+            }
+        }
+
+        const createPivotTable = (name, entities, links, attrs) => {
+            // Table name `table1_table2_table3`
+            const tablename = links.map(el => this.#items[this.#items[el].entityid].text).join('_')
+
+            // Table name `name`
+            // const tablename = name
+            const fields = []
+
+            for (let entityname of links.map(el => this.#items[this.#items[el].entityid].text)) {
+                const pk = getPrimaryKey(entities[entityname])
+                if (pk === undefined) {
+                    // Error
+                    alert(`Errore: la tabella \`${entityname}\` non ha una chiave primaria`)
+                    throw new Error()
+                }
+                fields.push({
+                    name: `${entityname}_${pk.name}`,
+                    type: pk.type,
+                    constraints: {...Constraint.primarykey(), ...Constraint.external(entityname, pk.name, 'noaction', 'noaction')}
+                })
+            }
+
+            entities[tablename] = {fields: fields.concat(attrs)}
+        }
+
+        let entities = {}
+
+        for (let itemid in this.#items) {
+            if (this.#items[itemid].type !== 'entity') continue
+            const entity = {fields: []}
+
+            for (let entityattrid of this.#items[itemid].connections) {
+                if (this.#items[entityattrid].type !== 'entity-attr') continue
+                const field = {
+                    name: this.#items[entityattrid].text,
+                    type: this.#items[entityattrid].fieldtype,
+                }
+
+                if (this.#items[entityattrid].primarykey) {
+                    field.constraints = {...Constraint.primarykey()}
+                }
+
+                entity.fields.push(field)
+            }
+
+            entities[this.#items[itemid].text] = entity
+        }
+
+        for (let relationid in this.#items) {
+            if (this.#items[relationid].type !== 'relation') continue
+            const attrs = []
+            const links = []
+
+            for (let relatedid of this.#items[relationid].connections) {
+                if (this.#items[relatedid].type === 'relation-attr') {
+                    const field = {
+                        name: this.#items[relatedid].text,
+                        type: this.#items[relatedid].fieldtype,
+                    }
+
+                    if (this.#items[relatedid].primarykey) {
+                        field.constraints = {...Constraint.primarykey()}
+                    }
+
+                    attrs.push(field)
+                } else if (this.#items[relatedid].type === 'link') {
+                    links.push(relatedid)
+                } else {
+                    throw new Error()
+                }
+            }
+
+            if (links.length === 0) continue
+            else if (links.length === 1) {
+                entities[links[0]].fields = entities[links[0]].fields.concat(attrs)
+            } else if (links.length == 2) {
+                // 1:1 or N:N
+                let to1 = 0
+                let toN = 0
+
+                for (let linkid of links) {
+                    if (['(0, 1)', '(1, 1)'].includes(this.#items[linkid].text)) to1++
+                    else toN++
+                }
+
+                // 1:1
+                if (to1 == 2) {
+                    // Order chosen at random
+                    const parentname = this.#items[this.#items[links[0]].entityid].text
+                    const childname = this.#items[this.#items[links[1]].entityid].text
+
+                    const parentpk = getPrimaryKey(entities[parentname])
+
+                    entities[childname].fields = entities[childname].fields.concat(attrs).concat([{
+                        name: `${parentname}_${parentpk.name}`,
+                        type: parentpk.type,
+                        constraints: {...Constraint.external(parentname, parentpk.name, 'noaction', 'noaction')}
+                    }])
+
+                // N:N
+                } else if (toN == 2) {
+                    // With pivot table
+                    createPivotTable(this.#items[relationid].text, entities, links, attrs)
+
+                // 1:N
+                } else {
+                    let parentname, childname
+                    if (['(0, 1), (1, 1)'].includes(this.#items[links[0]].text)) {
+                        parentname = this.#items[this.#items[links[1]].entityid].text
+                        childname = this.#items[this.#items[links[0]].entityid].text
+                    } else {
+                        parentname = this.#items[this.#items[links[0]].entityid].text
+                        childname = this.#items[this.#items[links[1]].entityid].text
+                    }
+
+                    const parentpk = getPrimaryKey(entities[parentname])
+                    entities[childname].fields = entities[childname].fields.concat(attrs).concat([{
+                        name: `${parentname}_${parentpk.name}`,
+                        type: parentpk.type,
+                        constraints: {...Constraint.external(parentname, parentpk.name, 'noaction', 'noaction')}
+                    }])
+                }
+            } else {
+                // Relations with more than two elements
+                // Only with pivot table
+                createPivotTable(this.#items[relationid].text, entities, links, attrs)
+            }
+        }
+
+        return entities
+    }
+
+    // Debugging functions, not meant to be actually used
+    export() {
+        return this.#items
+    }
+
+    import(json) {
+        this.#items = json
+    }
 }
 
-// const entity1 = erd.createEntity(100, 60, 'Utente')
-// const relation = erd.createRelation(350, 100, 'Possiede')
-// const entity2 = erd.createEntity(600, 100, 'Animale')
-// const entity3 = erd.createEntity(300, 300, 'Medico')
-// erd.createEntityAttribute(entity1, 10, 'ID', true)
-// erd.createRelationAttribute(relation, 50, 'TEST')
-// erd.createLink(entity1, relation, '(0, N)')
-// erd.createLink(entity2, relation, '(0, N)')
-
+// TODO: Screenshot method to make background white and remove the dots from relations?
+// TODO: Context menu to edit and delete entities and relations
+// TODO: Deleting links

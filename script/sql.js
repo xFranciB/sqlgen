@@ -39,18 +39,20 @@ class MicrosoftSQL extends SQLParser {
 
         let res = []
 
-        if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
-            if (primarykeyfields.length === 1) {
-                res.push('PRIMARY KEY')
+        if (constraints) {
+            if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
+                if (primarykeyfields.length === 1) {
+                    res.push('PRIMARY KEY')
+                }
             }
-        }
 
-        if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
-            res.push('NOT NULL')
-        }
+            if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
+                res.push('NOT NULL')
+            }
 
-        if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
-            res.push('UNIQUE')
+            if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
+                res.push('UNIQUE')
+            }
         }
 
         return res.join(' ')
@@ -86,11 +88,11 @@ class MicrosoftSQL extends SQLParser {
         const foreignkeyfields = {}
 
         for (let field of table.fields) {
-            if (field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
+            if (field.constraints && field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
                 primarykeyfields.push(field.name)
             }
 
-            if (field.constraints.hasOwnProperty('FK')) {
+            if (field.constraints && field.constraints.hasOwnProperty('FK')) {
                 foreignkeyfields[field.name] = field.constraints.FK
             }
         }
@@ -131,22 +133,24 @@ class MySQL extends SQLParser {
 
         let res = []
 
-        if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
-            if (primarykeyfields.length === 1) {
-                res.push('PRIMARY KEY')
+        if (constraints) {
+            if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
+                if (primarykeyfields.length === 1) {
+                    res.push('PRIMARY KEY')
+                }
             }
-        }
 
-        if (constraints.hasOwnProperty('AI') && constraints.AI.value) {
-            res.push('AUTO_INCREMENT')
-        }
+            if (constraints.hasOwnProperty('AI') && constraints.AI.value) {
+                res.push('AUTO_INCREMENT')
+            }
 
-        if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
-            res.push('NOT NULL')
-        }
+            if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
+                res.push('NOT NULL')
+            }
 
-        if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
-            res.push('UNIQUE')
+            if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
+                res.push('UNIQUE')
+            }
         }
 
         return res.join(' ')
@@ -193,11 +197,11 @@ class MySQL extends SQLParser {
         const foreignkeyfields = {}
 
         for (let field of table.fields) {
-            if (field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
+            if (field.constraints && field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
                 primarykeyfields.push(field.name)
             }
 
-            if (field.constraints.hasOwnProperty('FK')) {
+            if (field.constraints && field.constraints.hasOwnProperty('FK')) {
                 foreignkeyfields[field.name] = field.constraints.FK
             }
         }

@@ -235,8 +235,16 @@ const erd = new ERDiagram(
 
 erModal.setCancel(erdModalEl.querySelector('.cancel'))
 erModal.setConfirm(erdModalEl.querySelector('.confirm'), () => {
-    alert('Ok')
-}, false)
+    const newTables = erd.toDataArray()
+
+    for (let table in newTables) {
+        if (data.tables.hasOwnProperty(table)) continue
+        addTable(table, true)
+    }
+
+    data.tables = {...data.tables, ...newTables}
+    saveData()
+}, true)
 
 erd.toggleDragging(true)
 erd.redraw()
