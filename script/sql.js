@@ -11,6 +11,15 @@ class SQLParser {
         return name
     }
 
+    static parsefkcontraint(constraint) {
+        return {
+            'noaction': 'NO ACTION',
+            'cascade': 'CASCADE',
+            'setnull': 'SET NULL',
+            'setdefault': 'SET DEFAULT'
+        }[constraint]
+    }
+
     static table(name, table) {return ''}
 
     static all(tables) {
@@ -30,18 +39,20 @@ class MicrosoftSQL extends SQLParser {
 
         let res = []
 
-        if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
-            if (primarykeyfields.length === 1) {
-                res.push('PRIMARY KEY')
+        if (constraints) {
+            if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
+                if (primarykeyfields.length === 1) {
+                    res.push('PRIMARY KEY')
+                }
             }
-        }
 
-        if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
-            res.push('NOT NULL')
-        }
+            if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
+                res.push('NOT NULL')
+            }
 
-        if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
-            res.push('UNIQUE')
+            if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
+                res.push('UNIQUE')
+            }
         }
 
         return res.join(' ')
@@ -73,15 +84,20 @@ class MicrosoftSQL extends SQLParser {
         // TODO: Error checking
 
         // TODO: Tables can only have one COUNTER type (AUTO_INCREMENT)
-        let primarykeyfields = []
+        const primarykeyfields = []
+        const foreignkeyfields = {}
 
         for (let field of table.fields) {
-            if (field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
+            if (field.constraints && field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
                 primarykeyfields.push(field.name)
+            }
+
+            if (field.constraints && field.constraints.hasOwnProperty('FK')) {
+                foreignkeyfields[field.name] = field.constraints.FK
             }
         }
 
-        let resfields = []
+        const resfields = []
         for (let field of table.fields) {
             const currfield = [
                 this.parsename(field.name),
@@ -97,6 +113,16 @@ class MicrosoftSQL extends SQLParser {
             resfields.push(`  PRIMARY KEY(${primarykeyfields.join(', ')})`)
         }
 
+        for (let el in foreignkeyfields) {
+            resfields.push(
+                `  CONSTRAINT FK_${this.parsename(foreignkeyfields[el].table)}_${this.parsename(foreignkeyfields[el].field)} ` +
+                `FOREIGN KEY (${this.parsename(el)}) ` +
+                `REFERENCES ${this.parsename(foreignkeyfields[el].table)}(${this.parsename(foreignkeyfields[el].field)}) --` +
+                (foreignkeyfields.onupdate === ''? '' : ` ON UPDATE ${this.parsefkcontraint(foreignkeyfields[el].onupdate)}`) +
+                (foreignkeyfields.ondelete === ''? '' : ` ON DELETE ${this.parsefkcontraint(foreignkeyfields[el].ondelete)}`)
+            )
+        }
+
         return `CREATE TABLE ${this.parsename(name)} (\n${resfields.join(',\n')}\n);`
     }
 }
@@ -107,22 +133,24 @@ class MySQL extends SQLParser {
 
         let res = []
 
-        if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
-            if (primarykeyfields.length === 1) {
-                res.push('PRIMARY KEY')
+        if (constraints) {
+            if (constraints.hasOwnProperty('PK') && constraints.PK.value) {
+                if (primarykeyfields.length === 1) {
+                    res.push('PRIMARY KEY')
+                }
             }
-        }
 
-        if (constraints.hasOwnProperty('AI') && constraints.AI.value) {
-            res.push('AUTO_INCREMENT')
-        }
+            if (constraints.hasOwnProperty('AI') && constraints.AI.value) {
+                res.push('AUTO_INCREMENT')
+            }
 
-        if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
-            res.push('NOT NULL')
-        }
+            if (!constraints.hasOwnProperty('NULL') || !constraints.NULL.value) {
+                res.push('NOT NULL')
+            }
 
-        if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
-            res.push('UNIQUE')
+            if (constraints.hasOwnProperty('UNIQUE') && constraints.UNIQUE.value) {
+                res.push('UNIQUE')
+            }
         }
 
         return res.join(' ')
@@ -165,15 +193,20 @@ class MySQL extends SQLParser {
         // TODO: Error checking
 
         // TODO: Tables can only have one AUTO_INCREMENT
-        let primarykeyfields = []
+        const primarykeyfields = []
+        const foreignkeyfields = {}
 
         for (let field of table.fields) {
-            if (field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
+            if (field.constraints && field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
                 primarykeyfields.push(field.name)
+            }
+
+            if (field.constraints && field.constraints.hasOwnProperty('FK')) {
+                foreignkeyfields[field.name] = field.constraints.FK
             }
         }
 
-        let resfields = []
+        const resfields = []
         for (let field of table.fields) {
             const currfield = [
                 this.parsename(field.name),
@@ -187,6 +220,15 @@ class MySQL extends SQLParser {
 
         if (primarykeyfields.length > 1) {
             resfields.push(`  PRIMARY KEY(${primarykeyfields.join(', ')})`)
+        }
+
+        for (let el in foreignkeyfields) {
+            resfields.push(
+                `  FOREIGN KEY (${this.parsename(el)}) ` +
+                `REFERENCES ${this.parsename(foreignkeyfields[el].table)}(${this.parsename(foreignkeyfields[el].field)})` +
+                (foreignkeyfields.onupdate === ''? '' : ` ON UPDATE ${this.parsefkcontraint(foreignkeyfields[el].onupdate)}`) +
+                (foreignkeyfields.ondelete === ''? '' : ` ON DELETE ${this.parsefkcontraint(foreignkeyfields[el].ondelete)}`)
+            )
         }
 
         return `CREATE TABLE ${this.parsename(name)} (\n${resfields.join(',\n')}\n);`

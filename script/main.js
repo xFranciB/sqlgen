@@ -93,10 +93,20 @@ class Constraint {
     static external(table, field, onupdate = '', ondelete = '') {
         const fields = {}
 
-        if (onupdate != '') fields.update = onupdate
-        if (ondelete != '') fields.delete = ondelete
+        if (onupdate != '') fields.onupdate = onupdate
+        if (ondelete != '') fields.ondelete = ondelete
         return {'FK': {table: table, field: field, ...fields}}
     }
+}
+
+const arrayEqual = (arr1, arr2) => {
+    if (arr1.length !== arr2.length) return false
+
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] != arr2[i]) return false
+    }
+
+    return true
 }
 
 const saveData = () => {
@@ -119,6 +129,7 @@ const addTable = (name, onlyel = false) => {
     newel.querySelector('span').textContent = name
     newel.setAttribute('name', name)
     newel.onclick = () => {
+        if (isEditing) return
         main.classList.remove('hidden')
         currentTable = name
         tableContainer.querySelector('.active')?.classList.remove('active')
@@ -208,3 +219,33 @@ deleteTableModal.setConfirm(deleteTableEl.querySelector('.confirm'), () => {
 deleteStructure.onclick = () => {
     deleteTableModal.open()
 }
+
+const btnErd = document.getElementById('btn-erd')
+const erdModalEl = document.getElementById('modal-er')
+const erModal = new Modal(erdModalEl)
+const erd = new ERDiagram(
+    document.getElementById('er-diagram'),
+    true,
+    document.getElementById('modal-createassoc'),
+    document.getElementById('er-createentity'),
+    document.getElementById('er-createrelation'),
+    document.getElementById('modal-edititem'),
+    document.getElementById('er-exportimage')
+)
+
+erModal.setCancel(erdModalEl.querySelector('.cancel'))
+erModal.setConfirm(erdModalEl.querySelector('.confirm'), () => {
+    const newTables = erd.toDataArray()
+
+    for (let table in newTables) {
+        if (data.tables.hasOwnProperty(table)) continue
+        addTable(table, true)
+    }
+
+    data.tables = {...data.tables, ...newTables}
+    saveData()
+}, true)
+
+erd.toggleDragging(true)
+erd.redraw()
+btnErd.onclick = () => erModal.open()

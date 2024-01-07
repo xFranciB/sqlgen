@@ -7,10 +7,12 @@
         <link rel="stylesheet" href="style/main.css">
         <link rel="icon" href="img/favicon.png">
         <script src="script/modal.js" defer></script>
-        <script src="script/table.js" defer></script>
-        <script src="script/main.js" defer></script>
         <script src="script/types.js" defer></script>
         <script src="script/sql.js" defer></script>
+        <script src="script/er.js" defer></script>
+        <script src="script/foreignkey.js" defer></script>
+        <script src="script/table.js" defer></script>
+        <script src="script/main.js" defer></script>
     </head>
     <body>
         <template id="table-entry-template">
@@ -21,8 +23,7 @@
         </template>
         <template id="table-row-template">
             <tr>
-                <!-- <img class="foreignkey hidden" src="img/foreign.svg"> -->
-                <td><img class="primarykey hidden" src="img/key.svg"></td>
+                <td><img class="foreignkey hidden" src="img/foreign.svg"><img class="primarykey hidden" src="img/key.svg"></td>
                 <td><input type="text" class="entry-name-input hidden"><span class="entry-name"></span></td>
                 <td>
                     <img src="img/edit.svg" class="entry-edit-type filter-accent hidden"><span class="entry-type"></span>
@@ -31,6 +32,13 @@
                 <td><input type="checkbox" class="hidden nullable-constraint"><img class="constraint nullable-constraint hidden" src="img/check.svg"></td>
                 <td><input type="checkbox" class="hidden ai-constraint" disabled><img class="constraint ai-constraint hidden" src="img/check.svg"></td>
                 <td><input type="checkbox" class="hidden unique-constraint"><img class="constraint unique-constraint hidden" src="img/check.svg"></td>
+            </tr>
+        </template>
+        <template id="ertype-row-template">
+            <tr>
+                <td><input type="text"></td>
+                <td><input type="checkbox"></td>
+                <td><img src="img/edit.svg" class="filter-accent" alt="edit row type"><span></span></td>
             </tr>
         </template>
 
@@ -83,6 +91,177 @@
                 <div class="modal-buttons">
                     <button class="confirm">Elimina</button>
                     <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-er">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Diagramma ER
+                </div>
+                <div class="modal-body">
+                    <div id="er-controls">
+                        <button id="er-createentity"><img src="img/plus.svg">Entità</button>
+                        <button id="er-createrelation"><img src="img/plus.svg">Relazione</button>
+                        <button id="er-exportimage"><img src="img/image.svg">Esporta immagine</button>
+                    </div>
+                    <canvas id="er-diagram" width="800" height="450"></canvas>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Crea</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-edititem">
+            <div class="modal-content">
+                <div class="modal-title"></div>
+                <div class="modal-body">
+                    <input id="erentity-name" placeholder="Nome" type="text">
+                    <br><br>
+                    <div>
+                        <label></label>
+                        <table id="er-attributestable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Chiave Primaria</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="3"><img src="img/plus.svg" class="filter-white" alt="add row">Aggiungi</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Salva</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-createassoc">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Opzioni Associazione
+                </div>
+                <div class="modal-body">
+                    <canvas id="er-createassoc" width="500" height="125"></canvas>
+                    <div class="modal-subtitle">Cardinalità</div>
+                    <fieldset id="fieldset-cardinality">
+                        <div>
+                            <input type="radio" name="cardinality" value="01">
+                            <label>(0, 1)</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="cardinality" value="11">
+                            <label>(1, 1)</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="cardinality" value="0N">
+                            <label>(0, N)</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="cardinality" value="1N">
+                            <label>(1, N)</label>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm" disabled>Salva</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal hidden" id="modal-foreign">
+            <div class="modal-content">
+                <div class="modal-title">
+                    Opzioni Chiave Esterna
+                </div>
+                <div class="modal-body">
+                    <div id="foreign-diagram">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th id="foreign-childtable"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td id="foreign-childfield"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div id="foreign-arrow"></div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <select id="foreign-parenttable">
+                                        </select>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <select id="foreign-parentfield">
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <span>All'aggiornamento del record genitore:</span>
+                    <fieldset>
+                        <div>
+                            <input type="radio" name="foreign-update" value="noaction">
+                            <label>Niente</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-update" value="cascade">
+                            <label>Aggiorna record figlio</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-update" value="setnull">
+                            <label>Imposta NULL</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-update" value="setdefault">
+                            <label>Importa valore di default</label>
+                        </div>
+                    </fieldset>
+                    <span>Alla cancellazione del record genitore:</span>
+                    <fieldset>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="noaction">
+                            <label>Niente</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="cascade">
+                            <label>Aggiorna record figlio</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="setnull">
+                            <label>Imposta NULL</label>
+                        </div>
+                        <div>
+                            <input type="radio" name="foreign-delete" value="setdefault">
+                            <label>Importa valore di default</label>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Salva</button>
+                    <button class="cancel">Annulla</button>
+                    <button class="delete">Elimina</button>
                 </div>
             </div>
         </div>
@@ -205,6 +384,10 @@
                 </div>
             </div>
         </div>
+        <!-- <div id="erd-contextmenu">
+            <button>a</button>
+            <button>a</button>
+        </div> -->
         <nav>
             <button id="btn-createtable">
                 <img src="img/plus.svg" alt="add table button">
@@ -212,6 +395,10 @@
             </button>
             <span class="nav-separator">Tabelle</span>
             <div id="table-container"></div>
+            <button id="btn-erd">
+                <img src="img/erd.svg" alt="open er diagram button">
+                Diagramma ER
+            </button>
             <button id="export-button">
                 <img src="img/export.svg" alt="export tables button">
                 Esporta SQL
@@ -242,6 +429,7 @@
                     Annulla
                 </button>
             </div>
+            <h2>Struttura</h2>
             <table id="table-structure">
                 <thead>
                     <tr>

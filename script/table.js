@@ -5,6 +5,9 @@ const saveButton = document.getElementById('save-structure')
 const editButton = document.getElementById('edit-structure')
 const discardStructure = document.getElementById('discard-structure')
 const exportStructure = document.getElementById('export-structure')
+const modalForeign = new Modal(document.getElementById('modal-foreign'))
+const fkprompt = new FKPrompt(modalForeign)
+let isEditing = false
 
 const setType = (row, res) => {
     if (res === null || res.type === null) {
@@ -13,18 +16,7 @@ const setType = (row, res) => {
 
     const entryType = row.querySelector('.entry-type')
     entryType.setAttribute('type', JSON.stringify(res))
-    entryType.textContent = ({
-        bit: 'Bit',
-        integer: 'Intero',
-        decimal: 'Virgola fissa',
-        float: 'Virgola mobile',
-        date: 'Data',
-        time: 'Ora',
-        datetime: 'Data e Ora',
-        char: 'Carattere',
-        varchar: 'Testo variabile',
-        text: 'Testo fisso',
-    })[res.type]
+    entryType.textContent = formatType(res.type)
 
     const autoincrement = row.querySelector('.ai-constraint')
 
@@ -42,16 +34,6 @@ const editType = async (row) => {
     const res = await getType()
     setType(row, res)
 }
-
-const togglePrimaryKey = el => {
-    if (el.getAttribute('disabled') === '') {
-        el.removeAttribute('disabled')
-    } else {
-        el.setAttribute('disabled', '')
-    }
-}
-
-const openFKModal = () => {}
 
 const editOnRow = row => {
     if (row.nextElementSibling === null) return
@@ -76,7 +58,7 @@ const editOnRow = row => {
         if (!tmp.classList.contains('hidden')) {
             tmp.previousElementSibling.checked = true
         }
-        
+
         tmp.previousElementSibling.classList.remove('hidden')
         tmp.classList.add('hidden')
     }
@@ -85,12 +67,13 @@ const editOnRow = row => {
 }
 
 const editOn = () => {
+    isEditing = true
     saveButton.classList.remove('hidden')
     discardStructure.classList.remove('hidden')
     editButton.classList.add('hidden')
     exportStructure.classList.add('hidden')
     deleteStructure.classList.add('hidden')
-    
+
     addRowBtn.classList.remove('hidden')
     const rows = document.querySelectorAll('#table-structure tbody tr')
 
@@ -99,12 +82,78 @@ const editOn = () => {
     }
 }
 
+const togglePrimaryKey = el => {
+    if (!isEditing) return
+
+    if (el.getAttribute('disabled') === '') {
+        el.removeAttribute('disabled')
+    } else {
+        el.setAttribute('disabled', '')
+    }
+}
+
+const toggleForeignKey = (row, el) => {
+    if (!isEditing) return
+
+    // New constraint
+    if (el.getAttribute('table') === null) {
+        fkprompt.promptNew(
+            data,
+            currentTable,
+            row.querySelector('.entry-name-input').value
+        ).then(res => {
+            if (!res.status) return
+
+            el.setAttribute('table', res.table)
+            el.setAttribute('field', res.field)
+            el.setAttribute('onupdate', res.onupdate)
+            el.setAttribute('ondelete', res.ondelete)
+            el.removeAttribute('disabled')
+        }).catch(() => {})
+
+        return
+    }
+
+    // Edit constraint
+    fkprompt.promptEdit(
+        data,
+        currentTable,
+        row.querySelector('.entry-name-input').value,
+        {
+            table: el.getAttribute('table'),
+            field: el.getAttribute('field'),
+            onupdate: el.getAttribute('onupdate'),
+            ondelete: el.getAttribute('ondelete')
+        }
+    ).then(res => {
+        if (res.status) {
+            el.setAttribute('table', res.table)
+            el.setAttribute('field', res.field)
+            el.setAttribute('onupdate', res.onupdate)
+            el.setAttribute('ondelete', res.ondelete)
+        } else {
+            el.removeAttribute('table')
+            el.removeAttribute('field')
+            el.removeAttribute('onupdate')
+            el.removeAttribute('ondelete')
+            el.setAttribute('disabled', '')
+        }
+    }).catch(() => {})
+}
+
 const addEmptyRow = () => {
     const newel = tableRowTemplate.content.cloneNode(true).firstElementChild
     newel.querySelector('.primarykey').onclick = e => {
         togglePrimaryKey(e.target)
     }
-    // newel.querySelector('.foreignkey').onclick = openFKModal
+
+    // TODO: Handle editing and deleting (done)
+    // TODO: Handle saving to `data` array and to LocalStorage (done)
+    // TODO: Handle SQL exporting
+    newel.querySelector('.foreignkey').onclick = e => {
+        toggleForeignKey(newel, e.target)
+    }
+
     newel.querySelector('.entry-edit-type').onclick = () => {
         editType(newel)
     }
@@ -115,7 +164,7 @@ const addEmptyRow = () => {
 const addRow = (rowdata) => {
     const row = addEmptyRow()
     row.querySelector('.entry-name').textContent = rowdata.name
-    
+
     for (let c in rowdata.constraints) {
         switch (c) {
         case 'NULL':
@@ -134,9 +183,17 @@ const addRow = (rowdata) => {
             row.querySelector('img.unique-constraint').classList.remove('hidden')
             break
 
-        case 'FK':
-            row.querySelector('img.foreignkey-constraint').classList.remove('hidden')
+        case 'FK': {
+            const foreignkey = row.querySelector('img.foreignkey')
+            foreignkey.setAttribute('table', rowdata.constraints.FK.table)
+            foreignkey.setAttribute('field', rowdata.constraints.FK.field)
+            foreignkey.setAttribute('onupdate', rowdata.constraints.FK.onupdate)
+            foreignkey.setAttribute('ondelete', rowdata.constraints.FK.ondelete)
+            foreignkey.removeAttribute('disabled')
+            foreignkey.classList.remove('hidden')
             break
+        }
+
         }
     }
 
@@ -144,7 +201,7 @@ const addRow = (rowdata) => {
 }
 
 const editOff = () => {
-    console.log('a')
+    isEditing = false
     saveButton.classList.add('hidden')
     discardStructure.classList.add('hidden')
     editButton.classList.remove('hidden')
@@ -204,6 +261,8 @@ saveButton.onclick = () => {
 
         const field = {}
         const primarykey = row.querySelector('img.primarykey[disabled]') === null
+        const foreignkey = row.querySelector('img.foreignkey[disabled]') === null
+        const foreignkeyel = row.querySelector('img.foreignkey')
 
         const entryNameInput = row.querySelector('.entry-name-input')
         field['name'] = entryNameInput.value
@@ -212,6 +271,12 @@ saveButton.onclick = () => {
         field.constraints = {}
 
         if (primarykey) field.constraints = {...field.constraints, ...Constraint.primarykey()}
+        if (foreignkey) field.constraints = {...field.constraints, ...Constraint.external(
+            foreignkeyel.getAttribute('table'),
+            foreignkeyel.getAttribute('field'),
+            foreignkeyel.getAttribute('onupdate'),
+            foreignkeyel.getAttribute('ondelete'),
+        )}
 
         for (let check of row.querySelectorAll('input[type="checkbox"]')) {
             if (check.checked && check.getAttribute('disabled') !== '') {
@@ -227,7 +292,8 @@ saveButton.onclick = () => {
         '- Può esserci soltanto un campo auto incrementale',
         '- Due o più campi hanno lo stesso nome',
         '- Almeno un campo non ha un nome',
-        '- Almeno un campo non ha un tipo'
+        '- Almeno un campo non ha un tipo',
+        '- Il tipo del campo figlio deve essere lo stesso del campo padre'
     ]
 
     const errors = {}
@@ -247,6 +313,21 @@ saveButton.onclick = () => {
 
         if (field.type == null) {
             errors[4] = true
+
+        // 'else if' is used because this breaks if `field.type` is null
+        } else if (field.constraints.hasOwnProperty('FK')) {
+            for (let pfield of data.tables[field.constraints.FK.table].fields) {
+                if (pfield.name === field.constraints.FK.field) {
+                    if (
+                        field.type.type !== pfield.type.type ||
+                        !arrayEqual(field.type.sizes, pfield.type. sizes)
+                    ) {
+                        errors[5] = true
+                    }
+
+                    break
+                }
+            }
         }
 
         fieldnames.push(field.name)

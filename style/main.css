@@ -7,6 +7,7 @@
     --mainbar-hover: #7B8D9E;
     --red: #FA272F;
     --red-hover: #FA4D53;
+    --nav-width: 250px;
 }
 
 img.filter-white {
@@ -56,7 +57,6 @@ button {
     align-items: center;
     gap: 5px;
     cursor: pointer;
-    color: white;
     font-weight: 700;
     transition: all .2s ease;
 }
@@ -69,8 +69,13 @@ button.confirm {
     background-color: var(--accent);
 }
 
-button.cancel {
+button.cancel,
+button.delete {
     background-color: var(--red);
+}
+
+button.delete {
+    margin-right: auto;
 }
 
 button.confirm:hover {
@@ -81,12 +86,22 @@ button.cancel:hover {
     background-color: var(--red-hover);
 }
 
-input[type="checkbox"] {
+button[disabled] {
+    background-color: gray !important;
+    cursor: not-allowed !important;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
     accent-color: var(--accent);
 }
 
 input[type="range"] {
     width: 98%;
+}
+
+fieldset {
+    border: none;
 }
 
 .hidden {
@@ -96,7 +111,7 @@ input[type="range"] {
 nav {
     background-color: var(--accent);
     box-shadow: 0 0 6px 0 black;
-    min-width: 250px;
+    min-width: var(--nav-width);
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -148,7 +163,7 @@ nav > button {
     width: 100%;
 }
 
-#export-button {
+#btn-erd {
     margin-top: auto;
 }
 
@@ -218,6 +233,7 @@ nav > button {
 }
 
 .modal-buttons {
+    color: white;
     display: flex;
     flex-direction: row-reverse;
     gap: 5px;
@@ -236,14 +252,27 @@ nav > button {
     padding: 5px;
 }
 
+.modal-subtitle {
+    font-weight: 700;
+    margin: 5px 0;
+}
+
 main {
     width: 100%;
+    overflow: scroll;
+    padding: 50px 20px;
+    position: relative;
 }
 
 #actions {
+    color: white;
     padding: 0;
     background-color: var(--mainbar);
     display: flex;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: var(--nav-width);
 }
 
 #actions > button {
@@ -258,7 +287,6 @@ main {
     text-align: left;
     border-collapse: collapse;
     font-size: 1.1em;
-    margin: 20px;
 }
 
 #table-structure th:first-child,
@@ -299,12 +327,14 @@ main {
     background-color: #00000020;
 }
 
-#table-structure input[type="text"] {
+#table-structure input[type="text"],
+#er-attributestable input[type="text"] {
     font-size: 1em;
     padding: 0 2px;
     width: 150px;
+    border-radius: 0;
     background-color: transparent;
-    border: none;
+    border: none !important;
     border-bottom: 1px solid var(--mainbar);
 }
 
@@ -429,3 +459,142 @@ main {
     height: 200px;
     resize: none;
 }
+
+#er-diagram {
+    border: 1px solid black;
+}
+
+#er-controls {
+    color: white;
+    width: 100%;
+    background-color: var(--mainbar);
+    display: flex;
+}
+
+#er-controls > button {
+    padding: 5px;
+    padding-right: 10px;
+}
+
+#er-controls > button:hover {
+    background-color: var(--mainbar-hover);
+}
+
+#er-exportimage {
+    margin-left: auto;
+}
+
+#modal-createentity .modal-body > div > * {
+    display: block;
+}
+
+#modal-createentity .modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#er-attributestable {
+    border-collapse: collapse;
+}
+
+#er-attributestable td:not(:first-child),
+#er-attributestable th:not(:first-child) {
+    padding: 0 20px;
+}
+
+#er-attributestable td,
+#er-attributestable th {
+    padding: 0 5px;
+    border: 1px solid black;
+}
+
+#er-attributestable th:first-child {
+    text-align: left;
+}
+
+#er-attributestable td:not(:first-child) {
+    text-align: center;
+}
+
+#er-attributestable img {
+    width: 20px;
+    vertical-align: sub;
+    cursor: pointer;
+}
+
+#er-attributestable tr:last-child {
+    cursor: pointer;
+    user-select: none;
+}
+
+#foreign-diagram {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin: 15px 0;
+}
+
+#foreign-diagram table {
+    border-collapse: collapse;
+    text-align: center;
+}
+
+#foreign-diagram table td,
+#foreign-diagram table th {
+    border: 1px solid black;
+    padding: 5px 10px;
+}
+
+#foreign-diagram th > select {
+    font-weight: 700;
+}
+
+#foreign-diagram select {
+    text-align: center;
+}
+
+#foreign-arrow {
+    width: 75px;
+    height: 3px;
+    position: relative;
+    border-radius: 100px;
+    background-color: black;
+}
+
+#foreign-arrow::after {
+    content: '';
+    display: block;
+    position: absolute;
+    height: 8px;
+    width: 8px;
+    right: 0px;
+    top: 50%;
+    border-radius: 2px;
+    border-right: 3px solid black;
+    border-top: 3px solid black;
+    transform: translateY(-50%) rotate(45deg);
+}
+
+/* #erd-contextmenu {
+    position: absolute;
+    width: 200px;
+    height: 300px;
+    left: 500px;
+    top: 100px;
+    background-color: white;
+    color: black;
+    border: 4px solid var(--accent);
+    border-radius: 5px;
+    box-shadow: 0 0 5px 0 black;
+    overflow: hidden;
+}
+
+#erd-contextmenu button {
+    width: 100%;
+    background-color: magenta;
+}
+
+#erd-contextmenu button:hover {
+    background-color: lime;
+} */

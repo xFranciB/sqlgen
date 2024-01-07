@@ -34,5 +34,5 @@ class Modal {
             if (callback !== null) callback()
             this.close()
         }
-    } 
+    }
 }
