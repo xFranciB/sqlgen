@@ -66,11 +66,12 @@
                     <label>Seleziona target</label>
                     <div>
                         <select id="target-select">
-                            <option value="mysql">MySQL</option>
+                            <option value="mysql" selected="selected">MySQL</option>
                             <option value="access">Microsoft Access</option>
                         </select>
                         <img src="img/mysql.svg" id="database-logo" alt="database logo">
                     </div>
+                    <button id="copy-sql-btn"><img src="img/copy.svg" alt="copy sql"></button>
                     <textarea readonly></textarea>
                 </div>
                 <div class="modal-buttons">
@@ -113,6 +114,25 @@
                     <button class="cancel">Annulla</button>
                 </div>
             </div>
+        </div>
+        <div id="er-contextmenu" class="hidden">
+            <button>
+                <img src="img/edit.svg" alt="edit entity">
+                <span>Modifica</span>
+            </button>
+            <button>
+                <img src="img/copy.svg" alt="copy entity">
+                <span>Copia</span>
+            </button>
+            <button>
+                <img src="img/paste.svg" alt="paste entity">
+                <span>Incolla</span>
+            </button>
+            <hr>
+            <button class="delete">
+                <img src="img/cancel.svg" alt="delete entity">
+                <span>Elimina</span>
+            </button>
         </div>
 
         <div class="modal hidden" id="modal-edititem">

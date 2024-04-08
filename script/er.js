@@ -93,7 +93,78 @@ class EREditItem {
     async #getType() {
         return await getType()
     }
+}
 
+// NOTE: If needed, this class can be made generic and then an
+// actual `ERContextMenu` one could just inherit from that.
+class ERContextMenu {
+    element
+
+    /**
+     * Gets an object with the required settings and opens a modal
+     * at positions (x, y) on the DOM.
+     * The structure of the `settings` object is as follows:
+     * {
+     *     "edit | ""copy" | "paste" | "delete": callback
+     * }
+     * `callback` will be called when the user clicks on the corresponding item.
+     **/
+    constructor(x, y, settings) {
+        this.element = document.createElement('div')
+        this.element.id = 'er-contextmenu'
+
+        const _actual_callback = callback => {
+            this.element.remove()
+            callback()
+        }
+
+        let deletehrneeded = false
+
+        if (settings.hasOwnProperty('edit')) {
+            const el = this.element.appendChild(ERContextMenu.#createButton('Modifica', 'img/edit.svg', 'edit entity'))
+            el.onclick = () => _actual_callback(settings['edit'])
+            deletehrneeded = true
+        }
+
+        if (settings.hasOwnProperty('copy')) {
+            const el = this.element.appendChild(ERContextMenu.#createButton('Copia', 'img/copy.svg', 'copy entity'))
+            el.onclick = () => _actual_callback(settings['copy'])
+            deletehrneeded = true
+        }
+
+        if (settings.hasOwnProperty('paste')) {
+            const el = this.element.appendChild(ERContextMenu.#createButton('Incolla', 'img/paste.svg', 'paste entity'))
+            el.onclick = () => _actual_callback(settings['paste'])
+            deletehrneeded = true
+        }
+
+        if (settings.hasOwnProperty('delete')) {
+            if (deletehrneeded) {
+                this.element.appendChild(document.createElement('hr'))
+            }
+
+            const el = this.element.appendChild(ERContextMenu.#createButton('Elimina', 'img/cancel.svg', 'delete entity', ['delete']))
+            el.onclick = () => _actual_callback(settings['delete'])
+        }
+
+        this.element.style.top  = String(y) + 'px'
+        this.element.style.left = String(x) + 'px'
+        document.body.appendChild(this.element)
+    }
+
+    remove() {
+        this.element.remove()
+    }
+    
+    static #createButton(name, image, alt, classes = []) {
+        const el = document.createElement('button')
+        el.classList = classes
+        const imgel = el.appendChild(document.createElement('img'))
+        imgel.src = image
+        imgel.alt = alt
+        el.appendChild(document.createElement('span')).textContent = name
+        return el
+    }
 }
 
 class ERDiagram {
@@ -102,6 +173,7 @@ class ERDiagram {
     #createassoc_modal = null
     #createassoc_erd
     #edititem_prompt = null
+    #contextmenu = null
     #createassoc_erd_items = {}
     #isDragging = false
     #draggingEntity = null
@@ -253,6 +325,9 @@ class ERDiagram {
             downloadElement.href = this.#canvas.toDataURL()
             downloadElement.click()
         }
+
+        // Context menu
+        this.#canvas.addEventListener('contextmenu', e => this.#handleContextMenu(e))
     }
 
     #createContext() {
@@ -1109,6 +1184,19 @@ class ERDiagram {
 
         // Left click to drag
         if (e.button == 0) {
+
+            // NOTE: This could be moved outside of the left click condition
+            if (this.#contextmenu !== null) {
+                // If the click didn't happen on the context menu
+                if (!e.target.matches(
+                    `#${this.#contextmenu.element.id},` + // The actual element
+                    `#${this.#contextmenu.element.id} *`  // Anything inside the element
+                )) {
+                    this.#contextmenu.remove()
+                    this.#contextmenu = null
+                }
+            }
+
             this.#isDragging = true
             this.#draggingEntity = erd.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
             if (this.#draggingEntity === null) return
@@ -1121,10 +1209,6 @@ class ERDiagram {
                 const boundscache = this.#boundscache[this.#draggingEntity]
                 this.#offsetcoords = {x: e.x - bdbox.x - boundscache.bounds.x, y: e.y - bdbox.y - boundscache.bounds.y}
             }
-
-        // Right click context menu
-        } else if (e.button == 2) {
-            // TODO
         }
     }
 
@@ -1188,6 +1272,31 @@ class ERDiagram {
 
         this.#moveItem(this.#draggingEntity, e.x - bdbox.x, e.y - bdbox.y)
         this.redraw()
+    }
+
+    // TODO: Handle closing by pressing outside the element
+    #handleContextMenu(e) {
+        e.preventDefault()
+        
+        if (this.#contextmenu !== null) {
+            this.#contextmenu.remove()
+            this.#contextmenu = null
+        }
+
+        this.#contextmenu = new ERContextMenu(e.x, e.y, {
+            'edit': () => {
+                console.log('dentro edit')
+            },
+            'copy': () => {
+                console.log('dentro copy')
+            },
+            'paste': () => {
+                console.log('dentro paste')
+            },
+            'delete': () => {
+                console.log('dentro delete')
+            }
+        })
     }
 
     toggleDragging(status) {

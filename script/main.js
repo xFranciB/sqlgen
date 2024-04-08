@@ -191,6 +191,7 @@ exportModal.setConfirm(exportEl.querySelector('.confirm'), () => {
     }
 }, false)
 
+// TODO: Add export button functionality
 exportBtn.onclick = () => {
     exportElTitle.textContent = 'Esporta SQL'
     exportEl.removeAttribute('table')
@@ -249,3 +250,6 @@ erModal.setConfirm(erdModalEl.querySelector('.confirm'), () => {
 erd.toggleDragging(true)
 erd.redraw()
 btnErd.onclick = () => erModal.open()
+// btnErd.dispatchEvent(new MouseEvent('click'))
+
+exportBtn.dispatchEvent(new MouseEvent('click'))
