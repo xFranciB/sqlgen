@@ -1,69 +1,77 @@
 class FKPrompt {
-    #element
-    #modal
-    #childtable
-    #childfield
-    #parenttable
-    #parentfield
-    #deletebtn
-    #data = null
+    static #element = document.getElementById('modal-foreign')
+    static #modal
+    static #childtable
+    static #childfield
+    static #parenttable
+    static #parentfield
+    static #deletebtn
+    static #tables = null
 
-    #childtablename = null
-    #parenttablename = null
+    static #childtablename = null
+    static #parenttablename = null
 
-    constructor(foreignkey_modal) {
-        this.#modal = foreignkey_modal
-        this.#element = this.#modal.element
-        this.#childtable = this.#element.querySelector('#foreign-childtable')
-        this.#childfield = this.#element.querySelector('#foreign-childfield')
-        this.#parenttable = this.#element.querySelector('#foreign-parenttable')
-        this.#parentfield = this.#element.querySelector('#foreign-parentfield')
-        this.#deletebtn = this.#element.querySelector('.delete')
+    static {
+        FKPrompt.#modal = new Modal(FKPrompt.#element)
+        FKPrompt.#childtable = FKPrompt.#element.querySelector('#foreign-childtable')
+        FKPrompt.#childfield = FKPrompt.#element.querySelector('#foreign-childfield')
+        FKPrompt.#parenttable = FKPrompt.#element.querySelector('#foreign-parenttable')
+        FKPrompt.#parentfield = FKPrompt.#element.querySelector('#foreign-parentfield')
+        FKPrompt.#deletebtn = FKPrompt.#element.querySelector('.delete')
 
-        this.#parenttable.onchange = () => this.#updateParentFieldsFromParentTable(this.#parenttable.value)
+        FKPrompt.#parenttable.onchange = () => FKPrompt.#updateParentFieldsFromParentTable(FKPrompt.#parenttable.value)
 
-        this.#modal.setCancel(this.#modal.element.querySelector('.cancel'))
+        FKPrompt.#modal.setCancel(FKPrompt.#modal.element.querySelector('.cancel'))
     }
 
-    #updateParentFieldsFromParentTable(parenttablename) {
-        this.#parenttablename = parenttablename
-        this.#emptySelect(this.#parentfield)
+    static #updateParentFieldsFromParentTable(parenttablename) {
+        FKPrompt.#parenttablename = parenttablename
+        FKPrompt.#emptySelect(FKPrompt.#parentfield)
 
-        for (let field of data.tables[this.#parenttablename].fields) {
-            this.#parentfield.appendChild(document.createElement('option'))
-            this.#parentfield.lastElementChild.textContent = field.name
+        let parentid = null
+        for (let i = 0; i < FKPrompt.#tables.length; i++) {
+            if (FKPrompt.#tables[i].name === FKPrompt.#parenttablename) {
+                parentid = i
+                break
+            }
         }
 
-        this.#parentfield.removeAttribute('disabled')
+        for (let field of FKPrompt.#tables[parentid].fields) {
+            FKPrompt.#parentfield.appendChild(document.createElement('option'))
+            FKPrompt.#parentfield.lastElementChild.textContent = field.name
+        }
+
+        FKPrompt.#parentfield.removeAttribute('disabled')
     }
 
-    #setParentTable(parenttablename) {
-        this.#parenttablename = parenttablename
+    static #setParentTable(parenttablename) {
+        FKPrompt.#parenttablename = parenttablename
 
-        const tablechildren = Array.from(this.#parenttable.children)
-        this.#parenttable.selectedIndex = tablechildren.indexOf(
+        const tablechildren = Array.from(FKPrompt.#parenttable.children)
+        FKPrompt.#parenttable.selectedIndex = tablechildren.indexOf(
             tablechildren.find(el => el.textContent == parenttablename)
         )
 
-        this.#updateParentFieldsFromParentTable(this.#parenttablename)
+        console.log(FKPrompt.#parenttablename)
+        FKPrompt.#updateParentFieldsFromParentTable(FKPrompt.#parenttablename)
     }
 
-    #setParentField(parentfieldname) {
-        const fieldchildren = Array.from(this.#parentfield.children)
-        this.#parentfield.selectedIndex = fieldchildren.indexOf(
+    static #setParentField(parentfieldname) {
+        const fieldchildren = Array.from(FKPrompt.#parentfield.children)
+        FKPrompt.#parentfield.selectedIndex = fieldchildren.indexOf(
             fieldchildren.find(el => el.textContent == parentfieldname)
         )
     }
 
-    #setOnUpdate(constraint) {
-        this.#element.querySelector(`input[name="foreign-update"][value="${constraint}"]`).checked = true
+    static #setOnUpdate(constraint) {
+        FKPrompt.#element.querySelector(`input[name="foreign-update"][value="${escapeQuotes(constraint)}"]`).checked = true
     }
 
-    #setOnDelete(constraint) {
-        this.#element.querySelector(`input[name="foreign-delete"][value="${constraint}"]`).checked = true
+    static #setOnDelete(constraint) {
+        FKPrompt.#element.querySelector(`input[name="foreign-delete"][value="${escapeQuotes(constraint)}"]`).checked = true
     }
 
-    #emptySelect(el) {
+    static #emptySelect(el) {
         while (el.lastElementChild) {
             el.lastElementChild.remove()
         }
@@ -72,61 +80,59 @@ class FKPrompt {
         el.lastElementChild.classList.add('hidden')
     }
 
-    #prepare(data, table_name, field_name) {
-        this.#data = data
-        this.#childtablename = table_name
-        this.#childtable.textContent = table_name
-        this.#childfield.textContent = field_name
+    static #prepare(tables, table_name, field_name) {
+        FKPrompt.#tables = tables
+        FKPrompt.#childtablename = table_name
+        FKPrompt.#childtable.textContent = table_name
+        FKPrompt.#childfield.textContent = field_name
 
-        this.#parentfield.setAttribute('disabled', '')
-        this.#emptySelect(this.#parenttable)
+        FKPrompt.#parentfield.setAttribute('disabled', '')
+        FKPrompt.#emptySelect(FKPrompt.#parenttable)
 
-        for (let table in this.#data.tables) {
-            if (table == table_name) continue
-            this.#parenttable.appendChild(document.createElement('option'))
-            this.#parenttable.lastElementChild.textContent = table
+        for (let table of FKPrompt.#tables) {
+            if (table.name == table_name) continue
+            FKPrompt.#parenttable.appendChild(document.createElement('option'))
+            FKPrompt.#parenttable.lastElementChild.textContent = table.name
         }
 
-        this.#emptySelect(this.#parentfield)
-        this.#element.querySelectorAll('input[value="noaction"]').forEach(el => el.click())
+        FKPrompt.#emptySelect(FKPrompt.#parentfield)
+        FKPrompt.#element.querySelectorAll('input[value="noaction"]').forEach(el => el.click())
     }
 
-    #prompt() {
+    static #prompt() {
         return new Promise((res, rej) => {
-            const tablesAmount = Object.keys(this.#data.tables).length
-            if (tablesAmount == 0 || (tablesAmount == 1 && this.#data.tables.hasOwnProperty(this.#childtablename))) {
-                alert('Crea un\'altra tabella prima di impostare le relazioni esterne!')
+            const tablesAmount = FKPrompt.#tables.length
+            if (tablesAmount == 0 || (tablesAmount == 1 && FKPrompt.#tables[0].name == FKPrompt.#childtablename)) {
+                ErrorModal.show('Crea un\'altra tabella prima di impostare le relazioni esterne!')
                 rej()
                 return
             }
 
-            this.#modal.open()
+            FKPrompt.#modal.open()
 
-            this.#modal.setConfirm(this.#modal.element.querySelector('.confirm'), () => {
-                if (this.#parenttablename === null) {
-                    alert('Inserisci una tabella')
-                    rej()
+            FKPrompt.#modal.setConfirm(FKPrompt.#modal.element.querySelector('.confirm'), () => {
+                if (FKPrompt.#parenttablename === null) {
+                    ErrorModal.show('Inserisci una tabella')
                     return
                 }
 
-                if (this.#parentfield.value === '') {
-                    alert('Inserisci un campo')
-                    rej()
+                if (FKPrompt.#parentfield.value === '') {
+                    ErrorModal.show('Inserisci un campo')
                     return
                 }
 
-                this.#modal.close()
+                FKPrompt.#modal.close()
                 res({
                     status: true,
-                    table: this.#parenttablename,
-                    field: this.#parentfield.value,
-                    onupdate: this.#element.querySelector('input[name="foreign-update"]:checked').value,
-                    ondelete: this.#element.querySelector('input[name="foreign-delete"]:checked').value
+                    table: FKPrompt.#parenttablename,
+                    field: FKPrompt.#parentfield.value,
+                    onupdate: FKPrompt.#element.querySelector('input[name="foreign-update"]:checked').value,
+                    ondelete: FKPrompt.#element.querySelector('input[name="foreign-delete"]:checked').value
                 })
             }, false)
 
-            this.#deletebtn.onclick = () => {
-                this.#modal.close()
+            FKPrompt.#deletebtn.onclick = () => {
+                FKPrompt.#modal.close()
 
                 res({
                     status: false
@@ -135,20 +141,20 @@ class FKPrompt {
         })
     }
 
-    promptNew(data, table_name, field_name) {
-        this.#prepare(data, table_name, field_name)
-        this.#deletebtn.classList.add('hidden')
-        return this.#prompt()
+    static promptNew(tables, table_name, field_name) {
+        FKPrompt.#prepare(tables, table_name, field_name)
+        FKPrompt.#deletebtn.classList.add('hidden')
+        return FKPrompt.#prompt()
     }
 
-    promptEdit(data, table_name, field_name, status) {
-        this.#prepare(data, table_name, field_name)
-        this.#setParentTable(status.table)
-        this.#setParentField(status.field)
-        this.#setOnUpdate(status.onupdate)
-        this.#setOnDelete(status.ondelete)
-        this.#deletebtn.classList.remove('hidden')
+    static promptEdit(tables, table_name, field_name, status) {
+        FKPrompt.#prepare(tables, table_name, field_name)
+        FKPrompt.#setParentTable(status.table)
+        FKPrompt.#setParentField(status.field)
+        FKPrompt.#setOnUpdate(status.onupdate)
+        FKPrompt.#setOnDelete(status.ondelete)
+        FKPrompt.#deletebtn.classList.remove('hidden')
 
-        return this.#prompt()
+        return FKPrompt.#prompt()
     }
 }

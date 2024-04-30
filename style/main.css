@@ -76,7 +76,11 @@ button.delete {
     background-color: var(--red);
 }
 
-button.delete {
+button.delete:hover {
+    background-color: var(--red-hover);
+}
+
+button.align-left {
     margin-right: auto;
 }
 
@@ -126,7 +130,7 @@ nav > .nav-separator {
     padding: 5px 0 2px 10px;
 }
 
-#table-container {
+#db {
     overflow-y: scroll;
     overflow-x: hidden;
 }
@@ -136,28 +140,139 @@ nav > .nav-separator {
     background-color: transparent;
 }
 
-
-.table-entry {
-    display: flex;
-    gap: 8px;
-    padding: 5px 10px;
-    align-items: center;
+.db-entry {
+    display: grid;
+    grid-template-rows: 0fr 0fr;
+    overflow: hidden;
+    padding: 0 10px;
     user-select: none;
-    cursor: pointer;
     transition: all .2s ease;
 }
 
-.table-entry > img {
-    width: 25px;
+.db-button {
+    display: flex;
+    align-items: center;
+    padding: 3px 5px;
+    gap: 5px;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all .2s ease;
 }
 
-.table-entry.active {
+.db-button img {
+    width: 22px;
+    filter: saturate(0) brightness(100);
+}
+
+.db-entry button {
+    font-weight: normal;
+    width: auto;
+}
+
+.db-button > img:last-child {
+    width: 25px;
+    filter: saturate(0) brightness(100);
+}
+
+.db-entry-expand {
+    padding: 0;
+    border-radius: 10px;
+}
+
+.db-entry-expand > img {
+    transition: all .15s ease;
+    width: 20px;
+    padding: 2px;
+}
+
+.db-entry:has(.db-tables button).expanded {
+    grid-template-rows: 0fr 1fr;
+}
+
+.db-entry.expanded .db-entry-expand > img:first-child {
+    transform: rotate(90deg);
+}
+
+.db-entry-expand:hover,
+.db-entry-create-table:hover {
+    backdrop-filter: brightness(1.2);
+    -webkit-backdrop-filter: brightness(1.2);
+}
+
+.db-entry.active > .db-button {
     background-color: var(--accent-active);
 }
 
-.table-entry:hover,
+.db-entry-create-table {
+    margin-left: auto;
+    border-radius: 10px;
+    padding: 0;
+    margin-right: 2px;
+}
+
+.db-entry-create-table > img {
+    width: 20px;
+    padding: 2px;
+}
+
+.db-button:hover,
+.db-tables > button:hover,
 nav > button:hover {
     background-color: var(--accent-hover);
+}
+
+.db-tables {
+    --left-margin: 31px;
+    padding-left: var(--left-margin);
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+.db-tables > button {
+    position: relative;
+    border-radius: 5px;
+    width: 100%;
+}
+
+.db-tables > button.active {
+    background-color: var(--accent-active);
+}
+
+.db-tables img {
+    width: 20px;
+}
+
+.table-backbone {
+    --height: 60;
+    --width: 20;
+    --line-halfwidth: 4%;
+    --height-ratio: calc(var(--width) / var(--height));
+    /* filter: url('#round'); */
+    height: calc(var(--height) * 1px);
+    width: calc(var(--width) * 1px);
+    position: absolute;
+}
+
+.table-backbone::before {
+    content: '';
+    left: calc(calc(calc(var(--left-margin) - calc(var(--width) * 0.5px)) * -1) - calc(var(--width) * 1px - 11px));
+    display: block;
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    background-color: white;
+    clip-path: polygon(
+        calc(50% - var(--line-halfwidth)) 0%,
+        calc(50% - var(--line-halfwidth)) calc(50% + calc(var(--line-halfwidth) * var(--height-ratio))),
+        100% calc(50% + calc(var(--line-halfwidth) * var(--height-ratio))),
+        100% calc(50% - calc(var(--line-halfwidth) * var(--height-ratio))),
+        calc(50% + var(--line-halfwidth)) calc(50% - calc(var(--line-halfwidth) * var(--height-ratio))),
+        calc(50% + var(--line-halfwidth)) 0%
+    );
+}
+
+.db-tables > button:first-child > .table-backbone {
+    --height: 20;
 }
 
 nav > button {
@@ -259,14 +374,71 @@ nav > button {
     margin: 5px 0;
 }
 
-main {
+#modal-textinput input {
     width: 100%;
-    overflow: scroll;
-    padding: 50px 20px;
-    position: relative;
+    box-sizing: border-box;
 }
 
-#actions {
+#modal-error {
+    z-index: 10;
+}
+
+#modal-yesnoinput {
+    z-index: 9;
+}
+
+#modal-error > .modal-content {
+    border-color: var(--red);
+}
+
+main {
+    width: 100%;
+    position: relative;
+    padding: 50px 20px;
+}
+
+#landing-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 5%;
+}
+
+#landing-view > img {
+    width: 150px;
+}
+
+#landing-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 60%;
+    justify-content: center;
+}
+
+.landing-btn {
+    background-color: #3E6E9340;
+    display: flex;
+    width: 250px;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 5px;
+    user-select: none;
+    cursor: pointer;
+    gap: 5px;
+    font-weight: 500;
+    transition: all .2s ease;
+}
+
+.landing-btn:hover {
+    background-color: #3E6E9360;
+}
+
+.landing-btn > img {
+    width: 50px;
+    filter: saturate(0) brightness(100);
+}
+.actions {
     color: white;
     padding: 0;
     background-color: var(--mainbar);
@@ -277,59 +449,58 @@ main {
     left: var(--nav-width);
 }
 
-#actions > button {
+.actions > button {
     padding: 10px 10px;
 }
 
-#actions > button:hover {
+.actions > button:hover {
     background-color: var(--mainbar-hover);
 }
 
-#table-structure {
+.list-table {
     text-align: left;
     border-collapse: collapse;
     font-size: 1.1em;
 }
 
-#table-structure th:first-child,
-#table-structure td:first-child {
-    padding: 0 5px;
-}
-
-#table-structure th,
-#table-structure td {
-    white-space: nowrap;
-    padding-right: 30px;
-}
-
-#table-structure td:nth-last-child(-n+4) {
+.list-table .cell-center {
     text-align: center;
 }
 
-#table-structure img {
-    width: 20px;
-    vertical-align: sub;
-    cursor: pointer;
+.list-table th,
+.list-table td {
+    white-space: nowrap;
+    /* padding-right: 30px; */
+    padding: 0 10px;
 }
 
-#table-structure thead > tr {
+.list-table img {
+    width: 20px;
+    vertical-align: sub;
+}
+
+.list-table thead > tr {
     background-color: var(--accent-light);
     height: 30px;
 }
 
-#table-structure tr {
+.list-table tr {
     height: 30px;
 }
 
-#table-structure tr:nth-child(2n-1):not(thead > tr) {
+.list-table tr:nth-child(2n-1):not(thead > tr) {
     background-color: #00000010;
 }
 
-#table-structure tr:nth-child(2n) {
+.list-table tr:nth-child(2n) {
     background-color: #00000020;
 }
 
-#table-structure input[type="text"],
+.list-table .editing img {
+    cursor: pointer;
+}
+
+.list-table input[type="text"],
 #er-attributestable input[type="text"] {
     font-size: 1em;
     padding: 0 2px;
@@ -340,17 +511,37 @@ main {
     border-bottom: 1px solid var(--mainbar);
 }
 
-#table-structure select {
+.list-table select {
     background-color: transparent;
     border: none;
     font-size: 1em;
     padding: 0;
 }
 
-#add-row td {
+.table-actions {
+    display: flex;
+}
+
+.table-actions > button {
+    font-weight: 500;
+    font-size: 0.8em;
+}
+
+.table-name {
+    min-width: 100px;
+}
+
+td:has(.constraint),
+td:has(input[type="checkbox"]),
+td.entry-size {
+    text-align: center;
+}
+
+.add-row {
     text-align: left !important;
     cursor: pointer;
     filter: brightness(0);
+    user-select: none;
     height: 2em;
 }
 
@@ -360,32 +551,81 @@ main {
 }
 
 #type-list {
+    --tab-button-height: 30px;
     background-color: white;
     border: 1px solid black;
-    padding: 10px 0;
-    overflow: scroll;
     max-height: 60vh;
     height: 300px;
+    width: 200px;
 }
 
-#type-list > span {
+#type-tab-selector {
+    display: flex;
+    position: relative;
+}
+
+#type-tab-selector::after {
+    --fade-height: 20px;
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    left: 0;
+    bottom: calc(-1 * var(--fade-height));
+    width: 100%;
+    height: var(--fade-height);
+    background: linear-gradient(180deg, #FFF 0%, #FFFFFF00 100%);
+}
+
+#type-tab-selector > div {
+    /* background-color: magenta; */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--tab-button-height);
+    width: 100%;
+    border-bottom: 1px solid black;
+    user-select: none;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+#type-tab-selector > div:first-child {
+    border-right: 1px solid black;
+}
+
+#type-tab-selector > div:hover {
+    background-color: lightgray !important;
+}
+
+#type-tab-selector > div.active {
+    background-color: var(--accent-light);
+}
+
+.type-tab {
+    overflow: scroll;
+    height: calc(100% - var(--tab-button-height));
+    padding: 10px 0;
+    box-sizing: border-box;
+}
+
+.type-tab span {
     display: block;
     user-select: none;
     padding: 0 25px 0 10px;
     transition: all .2s ease;
 }
 
-#type-list > span.active {
+.type-tab span.active {
     background-color: var(--accent-light);
 }
 
-#type-list > span:not(.type-category) {
+.type-tab span:not(.type-category) {
     text-indent: 1.5em;
     cursor: pointer;
     transition: all .2s ease;
 }
 
-#type-list > span:not(.type-category):hover {
+.type-tab span:not(.type-category):hover {
     background-color: lightgray;
 }
 
@@ -401,7 +641,7 @@ main {
 }
 
 #type-settings > div {
-    height: 50%;
+    height: 40%;
     margin-top: 5px;
     overflow: scroll;
 }
@@ -432,6 +672,8 @@ main {
 .fine-range > input {
     width: 40px;
     height: 20px;
+    border-radius: 3px;
+    border: 1.5px inset black;
 }
 
 #type-info {
@@ -465,7 +707,7 @@ main {
     margin-top: 15px;
     right: 20px;
     opacity: 0.5;
-    transition: opacity .5s ease;
+    transition: opacity .2s ease;
 }
 
 #copy-sql-btn > img {
@@ -476,19 +718,12 @@ main {
     opacity: 1;
 }
 
-#database-logo {
-    position: absolute;
-    vertical-align: middle;
-    user-select: none;
-    z-index: -1;
-    width: 150px;
-    top: 10px;
-    right: 10px;
-    opacity: 0.5;
-}
-
 #er-diagram {
     border: 1px solid black;
+}
+
+#er-databasename {
+    margin-bottom: 7px;
 }
 
 #er-controls {
@@ -614,6 +849,7 @@ main {
 #foreign-diagram {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 20px;
     margin: 15px 0;
 }

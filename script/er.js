@@ -22,76 +22,101 @@ const herons = (x1, y1, x2, y2, x3, y3) => {
 const clamp = (val, min, max) => Math.min(max, Math.max(min, val))
 
 class EREditItem {
-    #modal
-    #tbody
-    #data = {}
-    #lastId = -1
-    static rowTemplate = document.getElementById('ertype-row-template').content
+    static #modal = new Modal(document.getElementById('modal-edititem'))
+    static #tbody
+    static #data = {}
+    static #lastId = -1
+    static #rowTemplate = document.getElementById('ertype-row-template').content
+    static #erentityName = document.getElementById('erentity-name')
 
-    constructor(edititem_modal_element) {
-        this.#modal = new Modal(edititem_modal_element)
-        this.#tbody = this.#modal.element.querySelector('tbody')
-        this.#modal.element.querySelector('tr:last-child > td').onclick = () => this.#addRow()
+    static {
+        EREditItem.#tbody = EREditItem.#modal.element.querySelector('tbody')
+        EREditItem.#modal.element.querySelector('tr:last-child > td').onclick = () => EREditItem.#addRow()
     }
 
-    async prompt(title) {
-        this.#modal.element.querySelector('.modal-title').textContent = title
-        this.#modal.element.querySelector('#erentity-name').value = ''
+    static #prepare(title, attributes = []) {
+        EREditItem.#modal.element.querySelector('.modal-title').textContent = title
 
-        while (this.#tbody.children.length > 1) {
-            this.#tbody.children[0].remove()
+        while (EREditItem.#tbody.children.length > 1) {
+            EREditItem.#tbody.children[0].remove()
         }
 
-        for (let i = 0; i < 5; i++) {
-            this.#addRow()
-        }
+        for (let i = 0; i < Math.max(5, attributes.length); i++) {
+            const row = EREditItem.#addRow()
 
-        this.#modal.open()
+            if (attributes.length > i) {
+                EREditItem.#prepareRow(row, attributes[i])
+            }
+        }
+    }
+
+    static async #open() {
+        EREditItem.#modal.open()
 
         return new Promise((res, rej) => {
-            this.#modal.setCancel(this.#modal.element.querySelector('button.cancel'), rej)
-            this.#modal.setConfirm(this.#modal.element.querySelector('button.confirm'), () => {
-                const name = this.#modal.element.querySelector('#erentity-name').value
+            EREditItem.#modal.setCancel(EREditItem.#modal.element.querySelector('button.cancel'), rej)
+            EREditItem.#modal.setConfirm(EREditItem.#modal.element.querySelector('button.confirm'), () => {
+                const name = EREditItem.#modal.element.querySelector('#erentity-name').value
                 if (name === '') {
-                    alert('Inserisci un nome')
+                    ErrorModal.show('Inserisci un nome')
                     return
                 }
 
                 const resp = []
 
-                for (let i = 0; i < this.#tbody.children.length - 1; i++) {
-                    const rowname = this.#tbody.children[i].querySelector('input[type="text"]').value
+                for (let i = 0; i < EREditItem.#tbody.children.length - 1; i++) {
+                    const rowname = EREditItem.#tbody.children[i].querySelector('input[type="text"]').value
                     if (rowname === '') continue
 
-                    if (!this.#data.hasOwnProperty(this.#tbody.children[i].getAttribute('rowid'))) {
-                        alert('Inserisci un tipo')
+                    if (!EREditItem.#data.hasOwnProperty(EREditItem.#tbody.children[i].getAttribute('rowid'))) {
+                        ErrorModal.show('Inserisci un tipo')
                         return
                     }
 
-                    resp.push({name: rowname, pk: this.#tbody.children[i].querySelector('input[type="checkbox"]').checked, type: this.#data[this.#tbody.children[i].getAttribute('rowid')]})
+                    resp.push({
+                        name: rowname,
+                        pk: EREditItem.#tbody.children[i].querySelector('input[type="checkbox"]').checked,
+                        type: EREditItem.#data[EREditItem.#tbody.children[i].getAttribute('rowid')]
+                    })
                 }
 
                 // Check if name is already used somehow
-                this.#modal.close()
+                EREditItem.#modal.close()
                 res({name: name, attributes: resp})
             }, false)
         })
     }
 
-    #addRow() {
-        const newrow = EREditItem.rowTemplate.cloneNode(true).firstElementChild
-        newrow.setAttribute('rowid', ++this.#lastId)
-        newrow.querySelector('img').onclick = async () => {
-            const res = await this.#getType()
-            newrow.querySelector('span').textContent = formatType(res.type)
-            this.#data[parseInt(newrow.getAttribute('rowid'))] = res
-        }
-
-        this.#tbody.insertBefore(newrow, this.#tbody.lastElementChild)
+    static async prompt(title) {
+        EREditItem.#erentityName.value = ''
+        EREditItem.#prepare(title)
+        return EREditItem.#open()
     }
 
-    async #getType() {
-        return await getType()
+    static async promptNew(title, olddata) {
+        EREditItem.#erentityName.value = olddata.name
+        EREditItem.#prepare(title, olddata.attributes)
+        return EREditItem.#open()
+    }
+
+    static #addRow() {
+        const newrow = EREditItem.#rowTemplate.cloneNode(true).firstElementChild
+        newrow.setAttribute('rowid', ++EREditItem.#lastId)
+        newrow.querySelector('img').onclick = () => {
+            TypePrompt.getType().then(res => {
+                newrow.querySelector('span').textContent = res.format()
+                EREditItem.#data[parseInt(newrow.getAttribute('rowid'))] = res
+            }).catch(() => {})
+        }
+
+        return EREditItem.#tbody.insertBefore(newrow, EREditItem.#tbody.lastElementChild)
+    }
+
+    static #prepareRow(el, attribute) {
+        el.querySelector('input[type="text"]').value = attribute.name
+        el.querySelector('input[type="checkbox"]').checked = attribute.pk,
+        el.querySelector('span').textContent = attribute.type.format()
+        EREditItem.#data[parseInt(el.getAttribute('rowid'))] = attribute.type
     }
 }
 
@@ -172,7 +197,6 @@ class ERDiagram {
     #editable
     #createassoc_modal = null
     #createassoc_erd
-    #edititem_prompt = null
     #contextmenu = null
     #createassoc_erd_items = {}
     #isDragging = false
@@ -182,6 +206,7 @@ class ERDiagram {
     #items = {}
     #boundscache = {}
     #lastentity = -1
+    #copiedElement = null
     #canvas
     #canvasSizes
     #ctx
@@ -241,7 +266,6 @@ class ERDiagram {
         createassoc_modal_element = null,
         createentity_button = null,
         createrelation_button = null,
-        edititem_modal_element = null,
         export_image_button = null
     ) {
         this.#canvas = canvas
@@ -282,40 +306,41 @@ class ERDiagram {
         }
 
         // Create Entity modal
-        this.#edititem_prompt = new EREditItem(edititem_modal_element)
-        createentity_button.onclick = async () => {
-            const newdata = await this.#edititem_prompt.prompt("Crea Entità")
-            const entityid = this.createEntity(75, 75, newdata.name)
+        createentity_button.onclick = () => {
+            EREditItem.prompt("Crea Entità").then(newdata => {
+                const entityid = this.createEntity(75, 75, newdata.name)
 
-            for (let i = 0; i < newdata.attributes.length; i++) {
-                this.createEntityAttribute(
-                    entityid,
-                    ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
-                    newdata.attributes[i].name,
-                    newdata.attributes[i].type,
-                    newdata.attributes[i].pk
-                )
-            }
+                for (let i = 0; i < newdata.attributes.length; i++) {
+                    this.createEntityAttribute(
+                        entityid,
+                        ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
+                        newdata.attributes[i].name,
+                        newdata.attributes[i].type,
+                        newdata.attributes[i].pk
+                    )
+                }
 
-            this.redraw()
+                this.redraw()
+            }).catch(() => {})
         }
 
         // Create Relation modal
-        createrelation_button.onclick = async () => {
-            const newdata = await this.#edititem_prompt.prompt("Crea Relazione")
-            const relation = this.createRelation(75, 75, newdata.name)
+        createrelation_button.onclick = () => {
+            EREditItem.prompt("Crea Relazione").then(newdata => {
+                const relation = this.createRelation(75, 75, newdata.name)
 
-            for (let i = 0; i < newdata.attributes.length; i++) {
-                this.createRelationAttribute(
-                    relation,
-                    ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
-                    newdata.attributes[i].name,
-                    newdata.attributes[i].type,
-                    newdata.attributes[i].pk
-                )
-            }
+                for (let i = 0; i < newdata.attributes.length; i++) {
+                    this.createRelationAttribute(
+                        relation,
+                        ERDiagram.#shapeSizes.attribute.baseOffset + (ERDiagram.#shapeSizes.attribute.offset * i),
+                        newdata.attributes[i].name,
+                        newdata.attributes[i].type,
+                        newdata.attributes[i].pk
+                    )
+                }
 
-            this.redraw()
+                this.redraw()
+            }).catch(() => {})
         }
 
         // Export image button
@@ -1066,7 +1091,9 @@ class ERDiagram {
     }
 
     redraw() {
-        this.#ctx.clearRect(0, 0, this.#canvasSizes.w, this.#canvasSizes.h)
+        this.#ctx.fillStyle = 'white'
+        this.#ctx.fillRect(0, 0, this.#canvasSizes.w, this.#canvasSizes.h)
+        this.#ctx.fillStyle = 'black'
 
         for (let entityid in this.#items) {
             switch(this.#items[entityid].type) {
@@ -1276,27 +1303,194 @@ class ERDiagram {
 
     // TODO: Handle closing by pressing outside the element
     #handleContextMenu(e) {
-        e.preventDefault()
-        
         if (this.#contextmenu !== null) {
             this.#contextmenu.remove()
             this.#contextmenu = null
         }
 
-        this.#contextmenu = new ERContextMenu(e.x, e.y, {
-            'edit': () => {
-                console.log('dentro edit')
-            },
-            'copy': () => {
-                console.log('dentro copy')
-            },
-            'paste': () => {
-                console.log('dentro paste')
-            },
-            'delete': () => {
-                console.log('dentro delete')
+        const bdbox = this.#canvas.getBoundingClientRect()
+        const selected = erd.#elementAtPos(e.x - bdbox.x, e.y - bdbox.y)
+
+        const options = {}
+
+        if (selected !== null && ['entity', 'relation'].includes(this.#items[selected].type)) {
+            options.edit = () => {
+                const olddata = {
+                    name: this.#items[selected].text,
+                    attributes: []
+                }
+
+                for (let connection of this.#items[selected].connections) {
+                    if (['entity-attr', 'relation-attr'].includes(this.#items[connection].type)) {
+                        olddata.attributes.push({
+                            name: this.#items[connection].text,
+                            pk: this.#items[connection].primarykey,
+                            type: this.#items[connection].fieldtype
+                        })
+                    }
+                }
+
+                EREditItem.promptNew(
+                    (this.#items[selected].type === 'entity')? 'Modifica Entità' : 'Modifica Relazione',
+                    olddata
+                ).then(res => {
+                    this.#items[selected].text = res.name
+                    let last_attr = -1
+                    let biggest_offset = 0
+                    const new_connections = []
+
+                    for (let connection of this.#items[selected].connections) {
+                        if (['entity-attr', 'relation-attr'].includes(this.#items[connection].type)) {
+                            if (last_attr + 1 === res.attributes.length) {
+                                delete this.#boundscache[connection]
+                                delete this.#items[connection]
+                                continue
+                            }
+
+                            last_attr++
+                            this.#items[connection].text = res.attributes[last_attr].name
+                            this.#items[connection].primarykey = res.attributes[last_attr].pk
+                            this.#items[connection].fieldtype = res.attributes[last_attr].type
+
+                            if (this.#items[connection].pos.offset > biggest_offset) {
+                                biggest_offset = this.#items[connection].pos.offset
+                            }
+                        }
+                            
+                        new_connections.push(connection)
+                    }
+
+                    this.#items[selected].connections = new_connections
+
+                    for (let i = last_attr + 1; i < res.attributes.length; i++) {
+                        if (this.#items[selected].type === 'entity') {
+                            this.createEntityAttribute(
+                                selected,
+                                biggest_offset + ((i - last_attr) * ERDiagram.#shapeSizes.attribute.offset),
+                                res.attributes[i].name,
+                                res.attributes[i].type,
+                                res.attributes[i].pk,
+                            )
+                        } else if (this.#items[selected].type === 'relation') {
+                            this.createRelationAttribute(
+                                selected,
+                                biggest_offset + ((i - last_attr) * ERDiagram.#shapeSizes.attribute.offset),
+                                res.attributes[i].name,
+                                res.attributes[i].type,
+                                res.attributes[i].pk,
+                            )
+
+                        // } else {
+                        //     // Should never happen
+                        }
+                    }
+
+                    this.redraw()
+                }).catch(() => {})
             }
-        })
+
+            options.copy = () => {
+                this.#copiedElement = {[selected]: this.#items[selected]}
+
+                for (let connection of this.#items[selected].connections) {
+                    if (this.#items[connection].type === 'link') {
+                        continue
+                    }
+
+                    this.#copiedElement[connection] = JSON.parse(JSON.stringify(this.#items[connection]))
+                }
+            }
+
+            options.delete = async () => {
+                let res, _
+
+                if (this.#items[selected].type === 'entity') {
+                    [ res, _ ] = await YesNoInput.deleteEntity(this.#items[selected].text)
+                } else {
+                    [ res, _ ] = await YesNoInput.deleteRelation(this.#items[selected].text)
+                }
+
+                if (!res) {
+                    return
+                }
+
+                for (let connection of this.#items[selected].connections) {
+
+                    if (this.#items[connection].type === 'link') {
+                        const otherend = this.#items[connection][this.#items[selected].type === 'entity' ? 'relationid' : 'entityid']
+
+                        this.#items[otherend].connections = this.#items[otherend].connections.filter(conn => conn !== connection)
+                    }
+
+                    delete this.#items[connection]
+                    delete this.#boundscache[connection]
+                }
+
+                delete this.#items[selected]
+                this.redraw()
+            }
+        }
+
+        if (this.#copiedElement !== null) {
+            options.paste = () => {
+                // NOTE: All of this breaks if the items in the `#copiedElement` object
+                // are not in the correct order (first entity/relation, then their attributes)
+                if (this.#copiedElement === null) {
+                    return
+                }
+
+                const correspondence = {}
+                let curr_last = this.#lastentity + 1
+                
+                for (let key of Object.keys(this.#copiedElement)) {
+                    correspondence[key] = curr_last++
+                }
+
+                for (let key of Object.keys(this.#copiedElement)) {
+                    if (this.#copiedElement[key].type === 'entity') {
+                        this.createEntity(e.x - bdbox.x, e.y - bdbox.y, this.#copiedElement[key].text)
+
+                    } else if (this.#copiedElement[key].type === 'entity-attr') {
+                        this.createEntityAttribute(
+                            correspondence[this.#copiedElement[key].pos.relatedto],
+                            this.#copiedElement[key].pos.offset,
+                            this.#copiedElement[key].text,
+                            new FieldType(
+                                this.#copiedElement[key].fieldtype.id,
+                                this.#copiedElement[key].fieldtype.sizes,
+                                this.#copiedElement[key].fieldtype.showsizes,
+                            ),
+                            this.#copiedElement[key].primarykey
+                        )
+
+                    } else if (this.#copiedElement[key].type === 'relation') {
+                        this.createRelation(e.x - bdbox.x, e.y - bdbox.y, this.#copiedElement[key].text)
+
+                    } else if (this.#copiedElement[key].type === 'relation-attr') {
+                        this.createRelationAttribute(
+                            correspondence[this.#copiedElement[key].pos.relatedto],
+                            this.#copiedElement[key].pos.offset,
+                            this.#copiedElement[key].text,
+                            new FieldType(
+                                this.#copiedElement[key].fieldtype.id,
+                                this.#copiedElement[key].fieldtype.sizes,
+                                this.#copiedElement[key].fieldtype.showsizes,
+                            ),
+                            this.#copiedElement[key].primarykey
+                        )
+                    }
+                }
+                this.redraw()
+            }
+        }
+
+        if (Object.keys(options).length === 0) {
+            return
+        }
+
+        e.preventDefault()
+
+        this.#contextmenu = new ERContextMenu(e.x, e.y, options)
     }
 
     toggleDragging(status) {
@@ -1316,10 +1510,21 @@ class ERDiagram {
     }
 
     toDataArray() {
+        const getEntityPos = (entities, name) => {
+            for (let i = 0; i < entities.length; i++) {
+                if (entities[i].name === name) {
+                    return i
+                }
+            }
+        }
+
+
         const getPrimaryKey = (entity) => {
             for (let field of entity.fields) {
-                if (field.constraints && field.constraints.hasOwnProperty('PK') && field.constraints.PK.value) {
-                    return field
+                for (let constraint of field.constraints) {
+                    if (constraint.id === Constraint.ids.PK) {
+                        return field
+                    }
                 }
             }
         }
@@ -1333,43 +1538,45 @@ class ERDiagram {
             const fields = []
 
             for (let entityname of links.map(el => this.#items[this.#items[el].entityid].text)) {
-                const pk = getPrimaryKey(entities[entityname])
+                const entitypos = getEntityPos(entities, entityname)
+                const pk = getPrimaryKey(entities[entitypos])
                 if (pk === undefined) {
                     // Error
-                    alert(`Errore: la tabella \`${entityname}\` non ha una chiave primaria`)
+                    ErrorModal.show(`Errore: la tabella \`${entityname}\` non ha una chiave primaria`)
                     throw new Error()
                 }
-                fields.push({
-                    name: `${entityname}_${pk.name}`,
-                    type: pk.type,
-                    constraints: {...Constraint.primarykey(), ...Constraint.external(entityname, pk.name, 'noaction', 'noaction')}
-                })
+                fields.push(new Field(
+                    `${entityname}_${pk.name}`,
+                    pk.type,
+                    [new PrimaryKeyConstraint(), new ForeignKeyConstraint(entityname, pk.name, 'noaction', 'noaction')]
+                ))
             }
 
-            entities[tablename] = {fields: fields.concat(attrs)}
+            entities.push(new Table(tablename, fields.concat(attrs)))
         }
 
-        let entities = {}
+        let entities = []
 
         for (let itemid in this.#items) {
             if (this.#items[itemid].type !== 'entity') continue
-            const entity = {fields: []}
+            const entity = new Table(this.#items[itemid].text, [])
 
             for (let entityattrid of this.#items[itemid].connections) {
                 if (this.#items[entityattrid].type !== 'entity-attr') continue
-                const field = {
-                    name: this.#items[entityattrid].text,
-                    type: this.#items[entityattrid].fieldtype,
-                }
+                const field = new Field(
+                    this.#items[entityattrid].text,
+                    this.#items[entityattrid].fieldtype,
+                    []
+                )
 
                 if (this.#items[entityattrid].primarykey) {
-                    field.constraints = {...Constraint.primarykey()}
+                    field.constraints.push(new PrimaryKeyConstraint())
                 }
 
                 entity.fields.push(field)
             }
 
-            entities[this.#items[itemid].text] = entity
+            entities.push(entity)
         }
 
         for (let relationid in this.#items) {
@@ -1379,13 +1586,14 @@ class ERDiagram {
 
             for (let relatedid of this.#items[relationid].connections) {
                 if (this.#items[relatedid].type === 'relation-attr') {
-                    const field = {
-                        name: this.#items[relatedid].text,
-                        type: this.#items[relatedid].fieldtype,
-                    }
+                    const field = new Field(
+                        this.#items[relatedid].text,
+                        this.#items[relatedid].fieldtype,
+                        []
+                    )
 
                     if (this.#items[relatedid].primarykey) {
-                        field.constraints = {...Constraint.primarykey()}
+                        field.constraints.push(new PrimaryKeyConstraint())
                     }
 
                     attrs.push(field)
@@ -1414,14 +1622,16 @@ class ERDiagram {
                     // Order chosen at random
                     const parentname = this.#items[this.#items[links[0]].entityid].text
                     const childname = this.#items[this.#items[links[1]].entityid].text
+                    const parentpos = getEntityPos(entities, parentname)
+                    const childpos = getEntityPos(entities, childname)
 
-                    const parentpk = getPrimaryKey(entities[parentname])
+                    const parentpk = getPrimaryKey(entities[parentpos])
 
-                    entities[childname].fields = entities[childname].fields.concat(attrs).concat([{
-                        name: `${parentname}_${parentpk.name}`,
-                        type: parentpk.type,
-                        constraints: {...Constraint.external(parentname, parentpk.name, 'noaction', 'noaction')}
-                    }])
+                    entities[childpos].fields = entities[childpos].fields.concat(attrs).concat([new Field(
+                        `${parentname}_${parentpk.name}`,
+                        parentpk.type,
+                        [new ForeignKeyConstraint(parentname, parentpk.name, 'noaction', 'noaction')]
+                    )])
 
                 // N:N
                 } else if (toN == 2) {
@@ -1439,12 +1649,16 @@ class ERDiagram {
                         childname = this.#items[this.#items[links[1]].entityid].text
                     }
 
-                    const parentpk = getPrimaryKey(entities[parentname])
-                    entities[childname].fields = entities[childname].fields.concat(attrs).concat([{
-                        name: `${parentname}_${parentpk.name}`,
-                        type: parentpk.type,
-                        constraints: {...Constraint.external(parentname, parentpk.name, 'noaction', 'noaction')}
-                    }])
+                    const parentpos = getEntityPos(entities, parentname)
+                    const childpos = getEntityPos(entities, childname)
+
+                    const parentpk = getPrimaryKey(entities[parentpos])
+
+                    entities[childpos].fields = entities[childpos].fields.concat(attrs).concat([new Field(
+                        `${parentname}_${parentpk.name}`,
+                        parentpk.type,
+                        [new ForeignKeyConstraint(parentname, parentpk.name, 'noaction', 'noaction')]
+                    )])
                 }
             } else {
                 // Relations with more than two elements
@@ -1466,6 +1680,35 @@ class ERDiagram {
     }
 }
 
+const erModal = new Modal(document.getElementById('modal-er'))
+const erd = new ERDiagram(
+    document.getElementById('er-diagram'),
+    true,
+    document.getElementById('modal-createassoc'),
+    document.getElementById('er-createentity'),
+    document.getElementById('er-createrelation'),
+    document.getElementById('er-exportimage')
+)
+
+erModal.setCancel(erModal.element.querySelector('.cancel'))
+erModal.setConfirm(erModal.element.querySelector('.confirm'), () => {
+    const dbname = document.getElementById('er-databasename').value
+    if (dbname === '') {
+        ErrorModal.show('Inserisci un nome al database')
+        return
+    }
+
+    if (Data.getDBIndex(dbname) !== null) {
+        ErrorModal.show(`Esiste già un database di nome "${dbname}"`)
+        return
+    }
+
+    Data.newDBFromJSON(new Database(dbname, erd.toDataArray()))
+    erModal.close()
+}, false)
+
+erd.toggleDragging(true)
+erd.redraw()
+
 // TODO: Screenshot method to make background white and remove the dots from relations?
-// TODO: Context menu to edit and delete entities and relations
 // TODO: Deleting links

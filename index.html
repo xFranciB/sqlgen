@@ -12,26 +12,60 @@
         <script src="script/er.js" defer></script>
         <script src="script/foreignkey.js" defer></script>
         <script src="script/table.js" defer></script>
+        <script src="script/datastructure.js" defer></script>
+        <script src="script/textinput.js" defer></script>
+        <script src="script/yesnoinput.js" defer></script>
+        <script src="script/errormodal.js" defer></script>
+        <script src="script/sidebar.js" defer></script>
+        <script src="script/fakedata.js" defer></script>
         <script src="script/main.js" defer></script>
     </head>
     <body>
+        <template id="db-entry-template">
+            <div class="db-entry">
+                <div class="db-button">
+                    <button class="db-entry-expand"> 
+                        <img src="img/arrow-right.svg" alt="expand db tables">
+                    </button>
+                    <img src="img/access.svg" alt="db icon">
+                    <span></span>
+                    <button class="db-entry-create-table" title="Aggiungi tabella">
+                        <img src="img/plus.svg" alt="add table">
+                    </button>
+                </div>
+                <div class="db-tables"></div>
+            </div>
+        </template>
         <template id="table-entry-template">
-            <div class="table-entry">
+            <button>
+                <div class="table-backbone"></div>
                 <img src="img/table.svg" alt="table">
                 <span></span>
-            </div>
+            </button>
         </template>
         <template id="table-row-template">
             <tr>
-                <td><img class="foreignkey hidden" src="img/foreign.svg"><img class="primarykey hidden" src="img/key.svg"></td>
-                <td><input type="text" class="entry-name-input hidden"><span class="entry-name"></span></td>
+                <td colspan="2"><img class="foreignkey hidden" src="img/foreign.svg"><img class="primarykey hidden" src="img/key.svg"></td>
+                <td class="entry-name"></td>
+                <td class="entry-type"></td>
+                <td class="entry-size"></td>
+                <td><img class="constraint nullable-constraint hidden" src="img/check.svg"></td>
+                <td><img class="constraint ai-constraint hidden" src="img/check.svg"></td>
+                <td><img class="constraint unique-constraint hidden" src="img/check.svg"></td>
+            </tr>
+        </template>
+        <template id="table-row-edit-template">
+            <tr>
+                <td><img src="img/cancel.svg" class="table-delete-field filter-red" alt="delete row"></td>
+                <td><img class="foreignkey" src="img/foreign.svg" disabled><img class="primarykey" src="img/key.svg" disabled></td>
+                <td><input type="text" class="entry-name-input"></td>
                 <td>
-                    <img src="img/edit.svg" class="entry-edit-type filter-accent hidden"><span class="entry-type"></span>
+                    <img src="img/edit.svg" class="entry-edit-type filter-accent"><span class="entry-type"></span>
                 </td>
                 <td><span class="entry-size"></span></td>
-                <td><input type="checkbox" class="hidden nullable-constraint"><img class="constraint nullable-constraint hidden" src="img/check.svg"></td>
-                <td><input type="checkbox" class="hidden ai-constraint" disabled><img class="constraint ai-constraint hidden" src="img/check.svg"></td>
-                <td><input type="checkbox" class="hidden unique-constraint"><img class="constraint unique-constraint hidden" src="img/check.svg"></td>
+                <td><input type="checkbox" class="nullable-constraint"></td>
+                <td><input type="checkbox" class="ai-constraint"></td>
+                <td><input type="checkbox" class="unique-constraint"></td>
             </tr>
         </template>
         <template id="ertype-row-template">
@@ -41,35 +75,44 @@
                 <td><img src="img/edit.svg" class="filter-accent" alt="edit row type"><span></span></td>
             </tr>
         </template>
+        <template id="dbview-table-entry">
+            <tr>
+                <td class="table-name"></td>
+                <td class="table-actions">
+                    <button class="db-show-table">
+                        <img src="img/table.svg" class="filter-accent" alt="view table">Visualizza
+                    </button>
+                    <button>
+                        <img src="img/export.svg" class="filter-accent" alt="export table">Esporta
+                    </button>
+                    <button class="db-delete-table">
+                        <img src="img/cancel.svg" class="filter-red" alt="delete table">Elimina
+                    </button>
+                </td>
+            </tr>
+        </template>
 
-        <div class="modal hidden" id="modal-createtable">
+        <div class="modal hidden" id="modal-textinput">
             <div class="modal-content">
-                <div class="modal-title">
-                    Crea tabella
-                </div>
+                <div class="modal-title"></div>
                 <div class="modal-body">
                     <input type="text">
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm">Crea</button>
-                    <button class="cancel">Annulla</button>
+                    <button class="confirm"></button>
+                    <button class="cancel"></button>
                 </div>
             </div>
         </div>
-
         <div class="modal hidden" id="modal-export">
             <div class="modal-content">
                 <div class="modal-title">
                     Esporta tabella
                 </div>
                 <div class="modal-body">
-                    <label>Seleziona target</label>
+                    <label>Numero di insert per tabella</label>
                     <div>
-                        <select id="target-select">
-                            <option value="mysql" selected="selected">MySQL</option>
-                            <option value="access">Microsoft Access</option>
-                        </select>
-                        <img src="img/mysql.svg" id="database-logo" alt="database logo">
+                        <input type="number" min="0" max="50" id="insert-amount">
                     </div>
                     <button id="copy-sql-btn"><img src="img/copy.svg" alt="copy sql"></button>
                     <textarea readonly></textarea>
@@ -80,28 +123,33 @@
                 </div>
             </div>
         </div>
-
-        <div class="modal hidden" id="modal-delete-table">
+        <div class="modal hidden" id="modal-yesnoinput">
             <div class="modal-content">
-                <div class="modal-title">
-                    Elimina tabella
-                </div>
-                <div class="modal-body">
-                    Sei sicuro di voler eliminare questa tabella?
-                </div>
+                <div class="modal-title"></div>
+                <div class="modal-body"></div>
                 <div class="modal-buttons">
-                    <button class="confirm">Elimina</button>
-                    <button class="cancel">Annulla</button>
+                    <button class="confirm"></button>
+                    <button class="cancel"></button>
                 </div>
             </div>
         </div>
-
+        <div class="modal hidden" id="modal-error">
+            <div class="modal-content">
+                <div class="modal-title"></div>
+                <div class="modal-body"></div>
+                <div class="modal-buttons">
+                    <button class="delete">Ok</button>
+                </div>
+            </div>
+        </div>
         <div class="modal hidden" id="modal-er">
             <div class="modal-content">
                 <div class="modal-title">
                     Diagramma ER
                 </div>
                 <div class="modal-body">
+                    <label>Nome database</label><br>
+                    <input type="text" id="er-databasename">
                     <div id="er-controls">
                         <button id="er-createentity"><img src="img/plus.svg">Entità</button>
                         <button id="er-createrelation"><img src="img/plus.svg">Relazione</button>
@@ -281,7 +329,7 @@
                 <div class="modal-buttons">
                     <button class="confirm">Salva</button>
                     <button class="cancel">Annulla</button>
-                    <button class="delete">Elimina</button>
+                    <button class="align-left delete">Elimina</button>
                 </div>
             </div>
         </div>
@@ -293,20 +341,93 @@
                 </div>
                 <div class="modal-body">
                     <div id="type-list">
-                        <span class="type-category">Numeri interi</span>
-                        <span id="type-bit">Bit</span>
-                        <span id="type-integer">Intero</span>
-                        <span class="type-category">Numeri decimali</span>
-                        <span id="type-decimal">Virgola fissa</span>
-                        <span id="type-float">Virgola mobile</span>
-                        <span class="type-category">Data e ora</span>
-                        <span id="type-date">Data</span>
-                        <span id="type-time">Ora</span>
-                        <span id="type-datetime">Data e Ora</span>
-                        <span class="type-category">Testo</span>
-                        <span id="type-char">Carattere</span>
-                        <span id="type-varchar">Testo variabile</span>
-                        <span id="type-text">Testo fisso</span>
+                        <div id="type-tab-selector">
+                            <div id="tab-simple-btn" class="active">Semplici</div>
+                            <div id="tab-premade-btn">Prefatti</div>
+                        </div>
+                        <div id="tab-simple" class="type-tab">
+                            <span class="type-category">Numeri interi</span>
+                            <span id="type-bit">Bit</span>
+                            <span id="type-integer">Intero</span>
+                            <span class="type-category">Numeri decimali</span>
+                            <span id="type-decimal">Virgola fissa</span>
+                            <span id="type-float">Virgola mobile</span>
+                            <span class="type-category">Data e ora</span>
+                            <span id="type-date">Data</span>
+                            <span id="type-time">Ora</span>
+                            <span id="type-datetime">Data e Ora</span>
+                            <span class="type-category">Testo</span>
+                            <span id="type-char">Carattere</span>
+                            <span id="type-varchar">Testo variabile</span>
+                            <span id="type-text">Testo fisso</span>
+                        </div>
+                        <div id="tab-premade" class="type-tab hidden">
+                            <span class="type-category">Anagrafica</span>
+                            <span id="type-name">Nome</span>
+                            <span id="type-surname">Cognome</span>
+                            <span id="type-gender">Sesso</span>
+                            <span id="type-birthdate">Data di nascita</span>
+                            <span id="type-email">Email</span>
+                            <span id="type-cf">Codice Fiscale</span>
+                            <span id="type-username">Username</span>
+                            <span id="type-password">Password</span>
+                            <span class="type-category">Luogo (Italia)</span>
+                            <span id="type-comune">Comune</span>
+                            <span id="type-provincia">Provincia</span>
+                            <span id="type-cap">CAP</span>
+                            <span id="type-prefix">Prefisso tel</span>
+                            <span id="type-codcat">Codice catastale</span>
+                            <span id="type-address">Indirizzo</span>
+                            <span id="type-placetel">Telefono</span>
+                            <span id="type-placefax">Fax</span>
+                            <span class="type-category">Nazione</span>
+                            <span id="type-nation">Nazione</span>
+                            <span id="type-nationality">Nazionalità</span>
+                            <span id="type-iso2">Codice ISO2</span>
+                            <span id="type-iso3">Codice ISO3</span>
+                            <span class="type-category">Animale</span>
+                            <span id="type-chip">Chip</span>
+                            <span id="type-animalname">Nome</span>
+                            <span id="type-animalspecies">Specie</span>
+                            <span id="type-animalgender">Sesso</span>
+                            <span id="type-animalbirthdate">Data di nascita</span>
+                            <span id="type-animalweight">Peso</span>
+                            <span id="type-animalheight">Altezza</span>
+                            <span class="type-category">Azienda</span>
+                            <span id="type-piva">Partita IVA</span>
+                            <span id="type-companycat">Categoria</span>
+                            <span id="type-reason">Ragione sociale</span>
+                            <span id="type-companytype">Tipologia</span>
+                            <span class="type-category">Opera</span>
+                            <span id="type-workname">Nome</span>
+                            <span id="type-author">Autore</span>
+                            <span class="type-category">Libro</span>
+                            <span id="type-isbn">ISBN</span>
+                            <span id="type-bookgenre">Genere</span>
+                            <span id="type-pages">Pagine</span>
+                            <span id="type-price">Prezzo</span>
+                            <span class="type-category">Film</span>
+                            <span id="type-isan">ISAN</span>
+                            <span id="type-director">Regista</span>
+                            <span id="type-filmgenre">Genere</span>
+                            <span id="type-length">Durata</span>
+                            <span id="type-imdb">Punteggio IMDB</span>
+                            <span class="type-category">Carta di Credito</span>
+                            <span id="type-circuit">Circuito</span>
+                            <span id="type-ccnumber">Numero</span>
+                            <span id="type-expire">Scadenza</span>
+                            <span id="type-cvv">CVV</span>
+                            <span class="type-category">Automobile</span>
+                            <span id="type-brand">Marca</span>
+                            <span id="type-model">Modello</span>
+                            <span id="type-supply">Alimentazione</span>
+                            <span id="type-licence">Targa</span>
+                            <span id="type-doorsnum">Porte</span>
+                            <span class="type-category">Altro</span>
+                            <span id="type-color">Colore</span>
+                            <span id="type-colorrgb">Colore RGB</span>
+                            <span id="type-mobile">Cellulare</span>
+                        </div>
                     </div>
                     <div id="type-settings">
                         <div id="integer-settings" class="hidden">
@@ -343,7 +464,7 @@
                             </div>
                         </div>
                         <div id="float-settings" class="hidden">
-                            <label>Grandezza</label>
+                            <label>Precisione</label>
                             <div class="fine-range">
                                 <div>
                                     <input type="range" min="1" max="53" step="1" list="float-sizes" id="float-range">
@@ -399,22 +520,18 @@
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button class="confirm" id="rowtype-confirm">Seleziona</button>
-                    <button class="cancel" id="rowtype-cancel">Annulla</button>
+                    <button class="confirm">Seleziona</button>
+                    <button class="cancel">Annulla</button>
                 </div>
             </div>
         </div>
-        <!-- <div id="erd-contextmenu">
-            <button>a</button>
-            <button>a</button>
-        </div> -->
         <nav>
-            <button id="btn-createtable">
-                <img src="img/plus.svg" alt="add table button">
-                Nuova tabella
+            <button id="btn-createdb">
+                <img src="img/plus.svg" alt="add db button">
+                Nuovo Database
             </button>
-            <span class="nav-separator">Tabelle</span>
-            <div id="table-container"></div>
+            <span class="nav-separator">Database</span>
+            <div id="db-container"></div>
             <button id="btn-erd">
                 <img src="img/erd.svg" alt="open er diagram button">
                 Diagramma ER
@@ -425,52 +542,109 @@
             </button>
         </nav>
 
-        <main class="hidden">
-            <div id="actions">
-                <button id="edit-structure">
-                    <img src="img/edit.svg" class="filter-white" alt="edit structure button">
-                    Modifica struttura
-                </button>
-                <button id="export-structure">
-                    <img src="img/export.svg" alt="export table button">
-                    Esporta tabella
-                </button>
-                <button id="delete-structure">
-                    <img src="img/cancel.svg" class="filter-red" alt="delete table button">
-                    Elimina tabella
-                </button>
-
-                <button id="save-structure" class="hidden">
-                    <img src="img/save.svg" alt="save changes button">
-                    Salva modifiche
-                </button>
-                <button id="discard-structure" class="hidden">
-                    <img src="img/cancel.svg" class="filter-white" alt="discard changes button">
-                    Annulla
-                </button>
+        <main>
+            <div id="landing-view">
+                <img src="img/mysql.svg">
+                <h1>Generatore query SQL</h1>
+                <div id="landing-buttons">
+                    <div id="landing-db-create" class="landing-btn">
+                        <img src="img/access.svg">
+                        <span>Crea un database</span>
+                    </div>
+                    <div id="landing-er-open" class="landing-btn">
+                        <img src="img/erd.svg">
+                        <span>Crea un diagramma ER</span>
+                    </div>
+                </div>
             </div>
-            <h2>Struttura</h2>
-            <table id="table-structure">
-                <thead>
-                    <tr>
-                        <th></th>
-                        <th>Nome</th>
-                        <th>Tipo</th>
-                        <th>Grandezza</th>
-                        <th>Nullabile</th>
-                        <th>Auto incrementale</th>
-                        <th>Unico</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr class="hidden" id="add-row">
-                        <td><img src="img/plus.svg" alt="add row button" id="add-row"></td>
-                        <td colspan="6">
-                            Aggiungi
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <div id="db-view" class="hidden">
+                <div class="actions">
+                    <button id="rename-db">
+                        <img src="img/rename.svg" class="filter-white" alt="rename database button">
+                        Rinomina database
+                    </button>
+                    <button id="export-db">
+                        <img src="img/export.svg" alt="export database button">
+                        Esporta database
+                    </button>
+                    <button id="delete-db">
+                        <img src="img/cancel.svg" class="filter-red" alt="delete database button">
+                        Elimina database
+                    </button>
+                </div>
+                <h2>Tabelle</h2>
+                <table id="db-tablelist" class="list-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="db-add-row" class="add-row">
+                            <td colspan="2">
+                                <img src="img/plus.svg" alt="add table button">
+                                Aggiungi
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="table-view" class="hidden">
+                <div id="table-actions" class="actions">
+                    <button id="edit-structure">
+                        <img src="img/edit.svg" class="filter-white" alt="edit structure button">
+                        Modifica struttura
+                    </button>
+                    <button id="rename-structure">
+                        <img src="img/rename.svg" class="filter-white" alt="rename table button">
+                        Rinomina tabella
+                    </button>
+                    <button id="export-structure">
+                        <img src="img/export.svg" alt="export table button">
+                        Esporta tabella
+                    </button>
+                    <button id="delete-structure">
+                        <img src="img/cancel.svg" class="filter-red" alt="delete table button">
+                        Elimina tabella
+                    </button>
+
+                    <button id="save-structure" class="show-edit hidden">
+                        <img src="img/save.svg" alt="save changes button">
+                        Salva modifiche
+                    </button>
+                    <button id="discard-structure" class="show-edit hidden">
+                        <img src="img/cancel.svg" class="filter-white" alt="discard changes button">
+                        Annulla
+                    </button>
+                </div>
+                <h2>Struttura</h2>
+                <table id="table-fieldlist" class="list-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>Nome</th>
+                            <th>Tipo</th>
+                            <th>Grandezza</th>
+                            <th>Nullabile</th>
+                            <th>Auto incrementale</th>
+                            <th>Unico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id="table-add-row" class="add-row no-delete">
+                            <td align="center"><img src="img/plus.svg" alt="add row button"></td>
+                            <td colspan="7">
+                                Aggiungi
+                            </td>
+                        </tr>
+                        <tr id="empty-fieldlist" class="no-delete">
+                            <td colspan="8" align="center">La tabella è vuota</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </main>
     </body>
 </html>

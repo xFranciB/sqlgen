@@ -1,104 +1,4 @@
-/*
-    Formato data:
-
-    Constraints {
-        NULL: {value: bool} |
-        PK: {value: bool} |
-        AI: {value: bool, start: 1} |
-        UNIQUE: {value: bool} |
-        FK: {table: string, field: string, <update | delete>: <noaction | cascade | set null>} 
-    }
-
-    // https://dev.mysql.com/doc/workbench/en/wb-migration-database-mssql-typemapping.html
-    Type {
-        // numbers
-        tinyint (8 bit)
-        smallint (16 bit)
-        mediumint (24 bit, mysql only)
-        int (32 bit)
-        bigint (64 bit)
-        decimal (p, s => 1 to 38 for ms and to 56 for mysql)
-        bit (s => max size for sql, ms is size 1)
-
-        // floating points
-        single (4 byte; float on mysql, real on microsoft)
-        double (8 byte; double on mysql, float on microsoft)
-
-        // date and time
-        date (date on both)
-        datetime (datetime on both)
-        time (time on both)
-
-        // characters
-        char (just 1. char(1) on microsoft, char on mysql)
-        varchar (1 to 2^31-1 on microsoft, 1 to 65535 on mysql, then text)
-        text (1 to 2^31-1 on microsoft, texts on mysql)
-    }
-
-    Field {
-        name: string,
-        type: Type,
-        constraints: Constraints[]
-    }
-
-    data = {
-        tables: {
-            name: {
-                fields: Field[]
-                // data: ...
-            }
-        }
-    }
-
-*/
-
-const imageBase = 'img/'
-
-const main = document.getElementsByTagName('main')[0]
-
-const addTableBtn = document.getElementById('btn-createtable')
-const exportBtn = document.getElementById('export-button')
-const entryTemplate = document.getElementById('table-entry-template')
-const tableContainer = document.getElementById('table-container')
-const targetSelect = document.getElementById('target-select')
-const databaseLogo = document.getElementById('database-logo')
-const deleteStructure = document.getElementById('delete-structure')
-
-let currentTable = null
-let data = JSON.parse(localStorage.getItem('data'))?? {tables: {}}
-
-class Constraint {
-    static action = {
-        ignore: 'ignore',
-        setnull: 'setnull',
-        cascade: 'cascade'
-    }
-
-    static nullable() {
-        return {'NULL': {value: true}}
-    }
-
-    static primarykey() {
-        return {'PK': {value: true}}
-    }
-
-    static ai(startpos = 1) { // >= 1
-        return {'AI': {value: true, start: startpos}}
-    }
-
-    static unique() {
-        return {'UNIQUE': {value: true}}
-    }
-
-    static external(table, field, onupdate = '', ondelete = '') {
-        const fields = {}
-
-        if (onupdate != '') fields.onupdate = onupdate
-        if (ondelete != '') fields.ondelete = ondelete
-        return {'FK': {table: table, field: field, ...fields}}
-    }
-}
-
+// Helper functions
 const arrayEqual = (arr1, arr2) => {
     if (arr1.length !== arr2.length) return false
 
@@ -109,147 +9,339 @@ const arrayEqual = (arr1, arr2) => {
     return true
 }
 
-const saveData = () => {
-    localStorage.setItem('data', JSON.stringify(data))
-}
+const escapeQuotes = str => str.replace('"', '\\"')
 
-const addTable = (name, onlyel = false) => {
-    if (!onlyel) {
-        if (Object.keys(data.tables).some(el => el == name)) {
-            alert('La tabella esiste già')
+// Global variables
+const imageBase = 'img/'
+
+// This is a static class used to modify the global state of
+// the application, it is not intended to be instantiated
+// NOTE: Only methods defined in this class should modify
+// the `data` field in localStorage in order to avoid conflicts
+// also, this class should only do edits to the `data` field,
+// it should not touch the DOM directly.
+// TODO: Actually do this
+class Data {
+    static #data
+    static currentDatabase = null
+    static currentTable = null
+
+    static {
+        const lsData = localStorage.getItem('data')
+
+        if (lsData === null) {
+            Data.#data = {databases: []}
+        } else {
+            Data.#data = {databases: Database.fromJSON(JSON.parse(lsData))}
+        }
+    }
+    
+    static newDB(name) {
+        if (Data.getDBIndex(name) !== null) {
+            ErrorModal.show('Il database esiste già')
             // error
             return
         }
 
-        data.tables[name] = {fields: []}
-        saveData()
+        const db = new Database(name)
+        Data.#data.databases.push(db)
+
+        Sidebar.addDB(db)
+        Data.saveData()
     }
 
-    const newel = entryTemplate.content.cloneNode(true).firstElementChild
-    newel.querySelector('span').textContent = name
-    newel.setAttribute('name', name)
-    newel.onclick = () => {
-        if (isEditing) return
-        main.classList.remove('hidden')
-        currentTable = name
-        tableContainer.querySelector('.active')?.classList.remove('active')
-        newel.classList.add('active')
-        clearTable()
-        loadTable(name)
+    static newTable(dbname, name) {
+        if (Data.getTableIndex(dbname, name) !== null) {
+            ErrorModal.show(`La tabella "${name}" esiste già nel database "${dbname}"`)
+            return
+        }
+
+        const table = new Table(name)
+
+        Data.addTable(dbname, table)
+
+        Sidebar.addTable(dbname, table)
+        Data.saveData()
     }
 
-    tableContainer.appendChild(newel)
-}
+    static newDBFromJSON(db) {
+        Data.#data.databases.push(db)
+        Sidebar.addDB(db)
+        Data.saveData()
+    }
 
-const updateTableFields = (table, fields) => {
-    data.tables[table].fields = [...fields]
-    saveData()
-}
+    // TODO: Does it even make sense to expose Data method
+    // publicly or should it be private so only Data class's
+    // members can access it?
+    // In theory it should be private, but the ER graph updates
+    // the data directly when saving its contents, so that saving
+    // should be made part of Data class and then that functionality removed.
+    static saveData() {
+        localStorage.setItem('data', JSON.stringify({databases: Data.#data.databases.map(db => db.toJSON())}))
+    }
 
-const deleteTable = (table) => {
-    delete data.tables[table]
-    saveData()
-}
+    static getAllDatabases() {
+        return Data.#data.databases
+    }
 
-const loadData = () => {
-    for (let table in data.tables) {
-        addTable(table, true)
+    static getDBIndex(name) {
+        for (let i = 0; i < Data.#data.databases.length; i++) {
+            if (Data.#data.databases[i].name === name) {
+                return i
+            }
+        }
+
+        return null
+    }
+
+    static getDB(name) {
+        const idx = Data.getDBIndex(name)
+        if (idx === null) {
+            return null
+        }
+
+        return Data.#data.databases[idx]
+    }
+
+    static addTable(dbname, table) {
+        const idx = Data.getDBIndex(dbname)
+        if (idx === null) {
+            return false
+        }
+
+        Data.#data.databases[idx].tables.push(table)
+        return true
+    }
+
+    static getAllTables(dbname) {
+        const idx = Data.getDBIndex(dbname)
+        if (idx === null) {
+            return null
+        }
+        
+        return Data.#data.databases[idx].tables
+    }
+
+    static getTableIndex(dbname, name) {
+        const idx = Data.getDBIndex(dbname)
+        if (idx === null) {
+            return null
+        }
+
+        for (let i = 0; i < Data.#data.databases[idx].tables.length; i++) {
+            if (Data.#data.databases[idx].tables[i].name === name) {
+                return {dbid: idx, tableid: i}
+            }
+        }
+
+        return null
+    }
+
+    static getDBAndTable(dbname, tablename) {
+        const idx = Data.getTableIndex(dbname, tablename)
+        if (idx === null) {
+            return null
+        }
+
+        const { dbid, tableid } = idx
+        
+        return {
+            db:    Data.#data.databases[dbid],
+            table: Data.#data.databases[dbid].tables[tableid]
+        }
+    }
+
+    static getTable(dbname, tablename) {
+        const idx = Data.getTableIndex(dbname, tablename)
+        if (idx === null) {
+            return null
+        }
+
+        const { dbidx, tableidx } = idx
+        
+        return Data.#data.databases[dbidx].tables[tableidx]
+    }
+
+    static renameDatabase(dbname, newname) {
+        const id = Data.getDBIndex(dbname)
+        if (id === null) {
+            return null
+        }
+
+        let iscurrent = false
+        
+        if (Data.currentDatabase.name === dbname) {
+            iscurrent = true
+        }
+
+        Data.#data.databases[id].name = newname
+
+        if (iscurrent) {
+            Data.currentDatabase = Data.#data.databases[id]
+        }
+
+        Data.saveData()
+    }
+
+    static deleteDatabase(dbname) {
+        const id = Data.getDBIndex(dbname)
+        if (id === null) {
+            return null
+        }
+
+        Data.#data.databases.splice(id, 1)
+        Data.saveData()
+    }
+
+    static renameTable(dbname, tablename, newname) {
+        const idx = Data.getTableIndex(dbname, tablename)
+        if (idx === null) {
+            return null
+        }
+
+        const { dbid, tableid } = idx
+        let iscurrent = false
+
+        if (Data.currentTable.name === tablename) {
+            iscurrent = true
+        }
+
+        for (let table of Data.#data.databases[dbid].tables) {
+            for (let field of table.fields) {
+                for (let constraint of field.constraints) {
+                    if (constraint.id === Constraint.ids.FK) {
+                        if (constraint.table === tablename) {
+                            constraint.table = newname
+                        }
+                    }
+                }
+            }
+        }
+
+        Data.#data.databases[dbid].tables[tableid].name = newname
+
+        if (iscurrent) {
+            Data.currentTable = Data.#data.databases[dbid].tables[tableid]
+        }
+
+        Data.saveData()
+    }
+
+    static deleteTable(dbname, tablename) {
+        const idx = Data.getTableIndex(dbname, tablename)
+        if (idx === null) {
+            return null
+        }
+
+        const { dbid, tableid } = idx
+
+        Data.#data.databases[dbid].tables.splice(tableid, 1)
+        Data.saveData()
+    }
+
+    static updateTableFields(dbname, tablename, newfields) {
+        const idx = Data.getTableIndex(dbname, tablename)
+        if (idx === null) {
+            return false
+        }
+
+        const { dbid, tableid } = idx
+
+        Data.#data.databases[dbid].tables[tableid].fields = newfields
+        Data.saveData()
+
+        return true
+    }
+
+    // TODO: Meant for testing purposes
+    static getData() {
+        return Data.#data
+    }
+
+    static loadData() {
+        for (let db of Data.#data.databases) {
+            Sidebar.addDB(db)
+        }
     }
 }
 
-loadData()
+class MainDiv {
+    static element = document.getElementsByTagName('main')[0]
 
-const addTableEl = document.getElementById('modal-createtable')
-const addTableModal = new Modal(addTableEl)
-addTableModal.setCancel(addTableEl.querySelector('.cancel'))
-addTableModal.setConfirm(addTableEl.querySelector('.confirm'), () => {
-    addTable(addTableEl.querySelector('input').value)
-})
+    static #renameDBButton = document.getElementById('rename-db')
+    // static #exportDBButton
+    static #deleteDBButton = document.getElementById('delete-db')
+    static #landingdbcreate = document.getElementById('landing-db-create')
+    static #landingeropen = document.getElementById('landing-er-open')
 
-addTableBtn.onclick = () => {addTableModal.open()}
+    static #landingViewID = 'landing-view'
+    static #dbViewID = 'db-view'
+    static #tableViewID = 'table-view'
 
-targetSelect.onchange = () => {
-    databaseLogo.src = imageBase + targetSelect.value + '.svg'
-}
+    static {
+        MainDiv.#renameDBButton.onclick = async () => {
+            const [ newname, oldname ] = await TextInput.openRenameDB(Data.currentDatabase.name)
+            if (newname === null) {
+                return
+            }
 
-targetSelect.dispatchEvent(new InputEvent('change'))
+            Data.renameDatabase(oldname, newname)
+            Sidebar.renameDatabase(oldname, newname)
+        }
 
-const exportEl = document.getElementById('modal-export')
-const exportElTitle = exportEl.querySelector('.modal-title')
-const exportarea = exportEl.querySelector('textarea')
-const exportModal = new Modal(exportEl)
-exportModal.setCancel(exportEl.querySelector('.cancel'))
-exportModal.setConfirm(exportEl.querySelector('.confirm'), () => {
-    const table = exportEl.getAttribute('table')
+        MainDiv.#deleteDBButton.onclick = async () => {
+            const [ response, dbtodelete ] = await YesNoInput.deleteDB(Data.currentDatabase.name)
 
-    const target = {access: MicrosoftSQL, mysql: MySQL}[targetSelect.value]
+            if (response) {
+                Data.deleteDatabase(dbtodelete)
+                Data.currentDatabase = null
+                Data.currentTable = null
+                Sidebar.deleteDB(dbtodelete)
+                MainDiv.showLandingView()
+            }
+        }
 
-    if (table === null) {
-        exportarea.value = target.all(data.tables)
-    } else {
-        exportarea.value = target.table(table, data.tables[table])
-    }
-}, false)
+        MainDiv.#landingdbcreate.onclick = () => Sidebar.addDbButton.dispatchEvent(new MouseEvent('click'))
 
-// TODO: Add export button functionality
-exportBtn.onclick = () => {
-    exportElTitle.textContent = 'Esporta SQL'
-    exportEl.removeAttribute('table')
-    exportarea.value = ''
-    exportModal.open()
-}
-
-exportStructure.onclick = () => {
-    exportElTitle.textContent = 'Esporta tabella'
-    exportEl.setAttribute('table', currentTable)
-    exportarea.value = ''
-    exportModal.open()
-}
-
-const deleteTableEl = document.getElementById('modal-delete-table')
-const deleteTableModal = new Modal(deleteTableEl)
-deleteTableModal.setCancel(deleteTableEl.querySelector('.cancel'))
-deleteTableModal.setConfirm(deleteTableEl.querySelector('.confirm'), () => {
-    main.classList.add('hidden')
-    clearTable()
-    deleteTable(currentTable)
-    tableContainer.querySelector(`div[name="${currentTable}"]`).remove()
-    currentTable = null
-})
-
-deleteStructure.onclick = () => {
-    deleteTableModal.open()
-}
-
-const btnErd = document.getElementById('btn-erd')
-const erdModalEl = document.getElementById('modal-er')
-const erModal = new Modal(erdModalEl)
-const erd = new ERDiagram(
-    document.getElementById('er-diagram'),
-    true,
-    document.getElementById('modal-createassoc'),
-    document.getElementById('er-createentity'),
-    document.getElementById('er-createrelation'),
-    document.getElementById('modal-edititem'),
-    document.getElementById('er-exportimage')
-)
-
-erModal.setCancel(erdModalEl.querySelector('.cancel'))
-erModal.setConfirm(erdModalEl.querySelector('.confirm'), () => {
-    const newTables = erd.toDataArray()
-
-    for (let table in newTables) {
-        if (data.tables.hasOwnProperty(table)) continue
-        addTable(table, true)
+        MainDiv.#landingeropen.onclick = () => Sidebar.btnErd.dispatchEvent(new MouseEvent('click'))
     }
 
-    data.tables = {...data.tables, ...newTables}
-    saveData()
-}, true)
+    static #showView(view_id) {
+        MainDiv.element.querySelector(`main > div:not(#${escapeQuotes(view_id)}):not(.hidden)`)?.classList.add('hidden')
+        MainDiv.element.querySelector(`main > div#${escapeQuotes(view_id)}.hidden`)?.classList.remove('hidden')
+    }
 
-erd.toggleDragging(true)
-erd.redraw()
-btnErd.onclick = () => erModal.open()
-// btnErd.dispatchEvent(new MouseEvent('click'))
+    static showLandingView() {
+        MainDiv.#showView(MainDiv.#landingViewID)
+    }
 
-exportBtn.dispatchEvent(new MouseEvent('click'))
+    static showDBView(dbname) {
+        const db = Data.getDB(dbname)
+        if (db === null) {
+            return
+        }
+
+        TablesTable.loadTable(db)
+
+        Data.currentDatabase = db
+        MainDiv.#showView(MainDiv.#dbViewID)
+    }
+
+    static showTableView(dbname, tablename) {
+        const ids = Data.getDBAndTable(dbname, tablename)
+        if (ids === null) {
+            return
+        }
+
+        const { db, table } = ids
+
+        Data.currentDatabase = db
+        Data.currentTable = table
+
+        FieldTable.loadTable(table)
+
+        MainDiv.#showView(MainDiv.#tableViewID)
+    }
+}
+
+Data.loadData()
