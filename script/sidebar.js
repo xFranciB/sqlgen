@@ -126,4 +126,8 @@ class Sidebar {
     static deleteTable(dbname, tablename) {
         Sidebar.#dbContainer.querySelector(`.db-entry[dbname="${escapeQuotes(dbname)}"] *[tablename="${escapeQuotes(tablename)}"]`)?.remove()
     }
+
+    static reset() {
+        Sidebar.#dbContainer.querySelectorAll('.db-entry').forEach(el => el.remove())
+    }
 }

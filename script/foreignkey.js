@@ -52,7 +52,6 @@ class FKPrompt {
             tablechildren.find(el => el.textContent == parenttablename)
         )
 
-        console.log(FKPrompt.#parenttablename)
         FKPrompt.#updateParentFieldsFromParentTable(FKPrompt.#parenttablename)
     }
 

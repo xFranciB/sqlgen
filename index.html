@@ -18,6 +18,7 @@
         <script src="script/errormodal.js" defer></script>
         <script src="script/sidebar.js" defer></script>
         <script src="script/fakedata.js" defer></script>
+        <script src="script/auth.js" defer></script>
         <script src="script/main.js" defer></script>
     </head>
     <body>
@@ -525,7 +526,47 @@
                 </div>
             </div>
         </div>
+        <div class="modal hidden" id="modal-login">
+            <div class="modal-content">
+                <div class="modal-title">Effettua il login</div>
+                <div class="modal-body">
+                    <label>Username</label><br>
+                    <input type="text" id="login-username"><br>
+                    <label>Password</label><br>
+                    <input type="password" id="login-password"><br>
+                    <span>Non hai ancora un account?<br><a href="#">Effettua la registrazione</a></span>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Login</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal hidden" id="modal-register">
+            <div class="modal-content">
+                <div class="modal-title">Effettua la registrazione</div>
+                <div class="modal-body">
+                    <label>Username</label><br>
+                    <input type="text" id="register-username"><br>
+                    <label>Password</label><br>
+                    <input type="password" id="register-password"><br>
+                    <span>Hai già un account?<br><a href="#">Effettua il login</a></span>
+                </div>
+                <div class="modal-buttons">
+                    <button class="confirm">Registrati</button>
+                    <button class="cancel">Annulla</button>
+                </div>
+            </div>
+        </div>
         <nav>
+            <button id="btn-login">
+                <img src="img/user.svg" alt="login button">
+                Effettua il login
+            </button>
+            <button id="btn-user" class="hidden">
+                <img src="img/user.svg" alt="login button">
+                <span>USERNAME</span>
+            </button>
             <button id="btn-createdb">
                 <img src="img/plus.svg" alt="add db button">
                 Nuovo Database

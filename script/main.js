@@ -13,6 +13,7 @@ const escapeQuotes = str => str.replace('"', '\\"')
 
 // Global variables
 const imageBase = 'img/'
+const apiEndpoint = '/sqlgen/api/'
 
 // This is a static class used to modify the global state of
 // the application, it is not intended to be instantiated
@@ -23,17 +24,12 @@ const imageBase = 'img/'
 // TODO: Actually do this
 class Data {
     static #data
+    static #remoteData = false
     static currentDatabase = null
     static currentTable = null
 
     static {
-        const lsData = localStorage.getItem('data')
-
-        if (lsData === null) {
-            Data.#data = {databases: []}
-        } else {
-            Data.#data = {databases: Database.fromJSON(JSON.parse(lsData))}
-        }
+        let failed = true
     }
     
     static newDB(name) {
@@ -77,7 +73,13 @@ class Data {
     // the data directly when saving its contents, so that saving
     // should be made part of Data class and then that functionality removed.
     static saveData() {
-        localStorage.setItem('data', JSON.stringify({databases: Data.#data.databases.map(db => db.toJSON())}))
+        const tosave = {databases: Data.#data.databases.map(db => db.toJSON())}
+
+        if (Data.#remoteData) {
+            Auth.setData(tosave).catch(() => {})
+        } else {
+            localStorage.setItem('data', JSON.stringify(tosave))
+        }
     }
 
     static getAllDatabases() {
@@ -253,15 +255,42 @@ class Data {
         return true
     }
 
-    // TODO: Meant for testing purposes
-    static getData() {
-        return Data.#data
-    }
+    static async loadData() {
+        let failed = true
 
-    static loadData() {
+        if (Auth.isLoggedIn()) {
+            try {
+                Data.#data = {databases: Database.fromJSON(await Auth.getData())}
+                Data.#remoteData = true
+                failed = false
+            } catch {
+                failed = true
+            }
+        }
+        
+        if (failed) {
+            Data.#remoteData = false
+
+            const lsData = localStorage.getItem('data')
+
+            if (lsData === null) {
+                Data.#data = {databases: []}
+            } else {
+                Data.#data = {databases: Database.fromJSON(JSON.parse(lsData))}
+            }
+        }
+
+        MainDiv.showLandingView()
+        Sidebar.reset()
+
         for (let db of Data.#data.databases) {
             Sidebar.addDB(db)
         }
+    }
+
+    // TODO: Meant for testing purposes
+    static getData() {
+        return Data.#data
     }
 }
 

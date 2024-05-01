@@ -1,0 +1,18 @@
+DROP DATABASE IF EXISTS sqlgen;
+CREATE DATABASE sqlgen;
+USE sqlgen;
+
+CREATE TABLE users (
+    ID INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(100) NOT NULL,
+    dati TEXT NOT NULL
+);
+
+CREATE TABLE sessions (
+    token VARCHAR(255) PRIMARY KEY,
+    expire DATETIME NOT NULL,
+    user_id INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

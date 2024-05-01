@@ -1,0 +1,7 @@
+{
+    "name": "svincosere/website",
+    "type": "project",
+    "require": {
+        "vlucas/phpdotenv": "^5.6"
+    }
+}
